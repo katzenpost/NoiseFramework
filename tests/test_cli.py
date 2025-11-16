@@ -15,7 +15,7 @@ class TestCLIGenerateKeypair:
         """Test generating Curve25519 keypair."""
         output_prefix = str(tmp_path / "test_key")
         
-        with patch("sys.argv", ["py-noise", "generate-keypair", "--dh", "25519", "-o", output_prefix]):
+        with patch("sys.argv", ["noiseframework", "generate-keypair", "--dh", "25519", "-o", output_prefix]):
             result = main()
         
         assert result == 0
@@ -32,7 +32,7 @@ class TestCLIGenerateKeypair:
         """Test generating Curve448 keypair."""
         output_prefix = str(tmp_path / "test_key")
         
-        with patch("sys.argv", ["py-noise", "generate-keypair", "--dh", "448", "-o", output_prefix]):
+        with patch("sys.argv", ["noiseframework", "generate-keypair", "--dh", "448", "-o", output_prefix]):
             result = main()
         
         assert result == 0
@@ -49,7 +49,7 @@ class TestCLIGenerateKeypair:
         """Test generating keypair with default output prefix."""
         monkeypatch.chdir(tmp_path)
         
-        with patch("sys.argv", ["py-noise", "generate-keypair"]):
+        with patch("sys.argv", ["noiseframework", "generate-keypair"]):
             result = main()
         
         assert result == 0
@@ -62,14 +62,14 @@ class TestCLIValidatePattern:
 
     def test_validate_valid_pattern(self) -> None:
         """Test validating a valid pattern."""
-        with patch("sys.argv", ["py-noise", "validate-pattern", "Noise_XX_25519_ChaChaPoly_SHA256"]):
+        with patch("sys.argv", ["noiseframework", "validate-pattern", "Noise_XX_25519_ChaChaPoly_SHA256"]):
             result = main()
         
         assert result == 0
 
     def test_validate_invalid_pattern(self) -> None:
         """Test validating an invalid pattern."""
-        with patch("sys.argv", ["py-noise", "validate-pattern", "Invalid_Pattern"]):
+        with patch("sys.argv", ["noiseframework", "validate-pattern", "Invalid_Pattern"]):
             with patch("sys.stderr", new_callable=StringIO):
                 result = main()
         
@@ -87,7 +87,7 @@ class TestCLIValidatePattern:
         ]
         
         for pattern in patterns:
-            with patch("sys.argv", ["py-noise", "validate-pattern", pattern]):
+            with patch("sys.argv", ["noiseframework", "validate-pattern", pattern]):
                 result = main()
                 assert result == 0, f"Pattern {pattern} should be valid"
 
@@ -96,15 +96,15 @@ class TestCLIInfo:
     """Test info command."""
 
     def test_show_info(self) -> None:
-        """Test showing Py-Noise information."""
-        with patch("sys.argv", ["py-noise", "info"]):
+        """Test showing noiseframework information."""
+        with patch("sys.argv", ["noiseframework", "info"]):
             result = main()
         
         assert result == 0
 
     def test_info_output_contains_key_information(self) -> None:
         """Test that info output contains expected information."""
-        with patch("sys.argv", ["py-noise", "info"]):
+        with patch("sys.argv", ["noiseframework", "info"]):
             with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
                 result = main()
                 output = mock_stdout.getvalue()
@@ -121,14 +121,14 @@ class TestCLIHelp:
 
     def test_no_command_shows_help(self) -> None:
         """Test that running without command shows help."""
-        with patch("sys.argv", ["py-noise"]):
+        with patch("sys.argv", ["noiseframework"]):
             result = main()
         
         assert result == 0
 
     def test_help_flag(self) -> None:
         """Test --help flag."""
-        with patch("sys.argv", ["py-noise", "--help"]):
+        with patch("sys.argv", ["noiseframework", "--help"]):
             with pytest.raises(SystemExit) as exc_info:
                 main()
         
@@ -136,7 +136,7 @@ class TestCLIHelp:
 
     def test_version_flag(self) -> None:
         """Test --version flag."""
-        with patch("sys.argv", ["py-noise", "--version"]):
+        with patch("sys.argv", ["noiseframework", "--version"]):
             with pytest.raises(SystemExit) as exc_info:
                 main()
         
@@ -150,7 +150,7 @@ class TestCLIAliases:
         """Test genkey alias for generate-keypair."""
         output_prefix = str(tmp_path / "alias_key")
         
-        with patch("sys.argv", ["py-noise", "genkey", "-o", output_prefix]):
+        with patch("sys.argv", ["noiseframework", "genkey", "-o", output_prefix]):
             result = main()
         
         assert result == 0
@@ -158,7 +158,7 @@ class TestCLIAliases:
 
     def test_validate_alias(self) -> None:
         """Test validate alias for validate-pattern."""
-        with patch("sys.argv", ["py-noise", "validate", "Noise_XX_25519_ChaChaPoly_SHA256"]):
+        with patch("sys.argv", ["noiseframework", "validate", "Noise_XX_25519_ChaChaPoly_SHA256"]):
             result = main()
         
         assert result == 0
@@ -169,13 +169,13 @@ class TestCLIEncryptDecrypt:
 
     def test_encrypt_requires_input(self) -> None:
         """Test that encrypt requires input file."""
-        with patch("sys.argv", ["py-noise", "encrypt"]):
+        with patch("sys.argv", ["noiseframework", "encrypt"]):
             with pytest.raises(SystemExit):
                 main()
 
     def test_encrypt_nonexistent_file(self) -> None:
         """Test encrypting nonexistent file."""
-        with patch("sys.argv", ["py-noise", "encrypt", "-i", "nonexistent.txt"]):
+        with patch("sys.argv", ["noiseframework", "encrypt", "-i", "nonexistent.txt"]):
             with patch("sys.stderr", new_callable=StringIO):
                 result = main()
         
@@ -183,6 +183,6 @@ class TestCLIEncryptDecrypt:
 
     def test_decrypt_requires_input(self) -> None:
         """Test that decrypt requires input file."""
-        with patch("sys.argv", ["py-noise", "decrypt"]):
+        with patch("sys.argv", ["noiseframework", "decrypt"]):
             with pytest.raises(SystemExit):
                 main()

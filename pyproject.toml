@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "py-noise"
+name = "noiseframework"
 version = "0.1.0"
 description = "A professional, secure, and easy-to-use implementation of the Noise Protocol Framework in Python"
 readme = "README.md"
@@ -52,14 +52,14 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/juliuspleunes4/py-noise"
-Documentation = "https://github.com/juliuspleunes4/py-noise/blob/main/README.md"
-Repository = "https://github.com/juliuspleunes4/py-noise"
-Issues = "https://github.com/juliuspleunes4/py-noise/issues"
-Changelog = "https://github.com/juliuspleunes4/py-noise/blob/main/docs/CHANGELOG.md"
+Homepage = "https://github.com/juliuspleunes4/noiseframework"
+Documentation = "https://github.com/juliuspleunes4/noiseframework/blob/main/README.md"
+Repository = "https://github.com/juliuspleunes4/noiseframework"
+Issues = "https://github.com/juliuspleunes4/noiseframework/issues"
+Changelog = "https://github.com/juliuspleunes4/noiseframework/blob/main/docs/CHANGELOG.md"
 
 [project.scripts]
-py-noise = "py_noise.cli.main:main"
+noiseframework = "py_noise.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

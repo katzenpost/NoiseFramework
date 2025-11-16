@@ -1,10 +1,10 @@
 # Py-Noise
 
-[![PyPI version](https://img.shields.io/pypi/v/py-noise.svg)](https://pypi.org/project/py-noise/)
+[![PyPI version](https://img.shields.io/pypi/v/noiseframework.svg)](https://pypi.org/project/noiseframework/)
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![GitHub Issues](https://img.shields.io/github/issues/juliuspleunes4/py-noise)](https://github.com/juliuspleunes4/py-noise/issues)
-[![GitHub Stars](https://img.shields.io/github/stars/juliuspleunes4/py-noise)](https://github.com/juliuspleunes4/py-noise/stargazers)
+[![GitHub Issues](https://img.shields.io/github/issues/juliuspleunes4/noiseframework)](https://github.com/juliuspleunes4/noiseframework/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/juliuspleunes4/noiseframework)](https://github.com/juliuspleunes4/noiseframework/stargazers)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 > A professional, secure, and easy-to-use implementation of the [Noise Protocol Framework](https://noiseprotocol.org/) in Python.
@@ -61,14 +61,14 @@
 ### From PyPI (Recommended)
 
 ```bash
-pip install py-noise
+pip install noiseframework
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/juliuspleunes4/py-noise.git
-cd py-noise
+git clone https://github.com/juliuspleunes4/noiseframework.git
+cd noiseframework
 pip install -e .
 ```
 
@@ -126,18 +126,18 @@ print(plaintext)  # b"Hello, secure world!"
 
 ```bash
 # Generate a keypair
-py-noise generate-keypair --dh 25519 -o mykey
+noiseframework generate-keypair --dh 25519 -o mykey
 # Creates: mykey_private.key, mykey_public.key
 
 # Validate a pattern string
-py-noise validate-pattern "Noise_XX_25519_ChaChaPoly_SHA256"
+noiseframework validate-pattern "Noise_XX_25519_ChaChaPoly_SHA256"
 
 # Show supported primitives
-py-noise info
+noiseframework info
 
 # Use shorter aliases
-py-noise genkey --dh 25519 -o mykey
-py-noise validate "Noise_XX_25519_ChaChaPoly_SHA256"
+noiseframework genkey --dh 25519 -o mykey
+noiseframework validate "Noise_XX_25519_ChaChaPoly_SHA256"
 ```
 
 ---
@@ -369,15 +369,15 @@ Generate static keypairs for use in Noise handshakes:
 
 ```bash
 # Generate Curve25519 keypair (default)
-py-noise generate-keypair -o mykey
+noiseframework generate-keypair -o mykey
 # Creates: mykey_private.key (32 bytes), mykey_public.key (32 bytes)
 
 # Generate Curve448 keypair
-py-noise generate-keypair --dh 448 -o mykey448
+noiseframework generate-keypair --dh 448 -o mykey448
 # Creates: mykey448_private.key (56 bytes), mykey448_public.key (56 bytes)
 
 # Use short alias
-py-noise genkey -o server_key
+noiseframework genkey -o server_key
 ```
 
 **Output:**
@@ -408,10 +408,10 @@ Validate Noise pattern strings and view their components:
 
 ```bash
 # Validate a pattern
-py-noise validate-pattern "Noise_XX_25519_ChaChaPoly_SHA256"
+noiseframework validate-pattern "Noise_XX_25519_ChaChaPoly_SHA256"
 
 # Use short alias
-py-noise validate "Noise_IK_448_AESGCM_BLAKE2b"
+noiseframework validate "Noise_IK_448_AESGCM_BLAKE2b"
 ```
 
 **Output:**
@@ -427,7 +427,7 @@ Pattern: Noise_XX_25519_ChaChaPoly_SHA256
 
 **Invalid pattern:**
 ```bash
-py-noise validate "Noise_INVALID_Pattern"
+noiseframework validate "Noise_INVALID_Pattern"
 # Error: Invalid pattern: Unsupported handshake pattern: INVALID
 ```
 
@@ -436,7 +436,7 @@ py-noise validate "Noise_INVALID_Pattern"
 Display supported cryptographic primitives and patterns:
 
 ```bash
-py-noise info
+noiseframework info
 ```
 
 **Output:**
@@ -468,11 +468,11 @@ Example pattern string:
 
 ```bash
 # Show help
-py-noise --help
-py-noise generate-keypair --help
+noiseframework --help
+noiseframework generate-keypair --help
 
 # Show version
-py-noise --version
+noiseframework --version
 ```
 
 ---
@@ -637,8 +637,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 ### Development Setup
 
 ```bash
-git clone https://github.com/juliuspleunes4/py-noise.git
-cd py-noise
+git clone https://github.com/juliuspleunes4/noiseframework.git
+cd noiseframework
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e ".[dev]"
@@ -731,9 +731,9 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/juliuspleunes4/py-noise/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/juliuspleunes4/py-noise/discussions)
-- **Documentation**: [Full Documentation](https://pynoise.readthedocs.io/)
+- **Issues**: [GitHub Issues](https://github.com/juliuspleunes4/noiseframework/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/juliuspleunes4/noiseframework/discussions)
+- **Documentation**: [Full Documentation](https://noiseframework.readthedocs.io/)
 
 ---
 

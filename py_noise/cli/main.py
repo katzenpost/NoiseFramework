@@ -140,7 +140,7 @@ def show_info(args: argparse.Namespace) -> int:
 def main() -> int:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        prog="py-noise",
+        prog="noiseframework",
         description="Noise Protocol Framework implementation in Python",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -148,7 +148,7 @@ def main() -> int:
     parser.add_argument(
         "--version",
         action="version",
-        version="py-noise 0.1.0",
+        version="noiseframework 0.1.0",
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
