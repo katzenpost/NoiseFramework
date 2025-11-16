@@ -37,8 +37,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - send() and receive() methods with associated data support
   - Nonce tracking methods (get_send_nonce(), get_receive_nonce())
   - Bidirectional encrypted communication wrapper
+- Command-line interface (py-noise CLI)
+  - generate-keypair command for creating static keypairs
+  - validate-pattern command for validating Noise pattern strings
+  - info command for displaying supported primitives and patterns
+  - Command aliases (genkey, validate)
+  - Full argparse-based CLI with help and version flags
 - Public API exports in py_noise.__init__.py
-- Comprehensive test suite with 140 tests and 96% coverage
+- CLI script entry point in pyproject.toml
+- Comprehensive test suite with 156 tests and 92% coverage
 - CLI module structure
 - Transport layer module structure
 - Comprehensive .gitignore for Python projects
