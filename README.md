@@ -3,8 +3,8 @@
 [![PyPI version](https://img.shields.io/pypi/v/py-noise.svg)](https://pypi.org/project/py-noise/)
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![GitHub Issues](https://img.shields.io/github/issues/juliuspleunes4/pynoise)](https://github.com/juliuspleunes4/pynoise/issues)
-[![GitHub Stars](https://img.shields.io/github/stars/juliuspleunes4/pynoise)](https://github.com/juliuspleunes4/pynoise/stargazers)
+[![GitHub Issues](https://img.shields.io/github/issues/juliuspleunes4/py-noise)](https://github.com/juliuspleunes4/py-noise/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/juliuspleunes4/py-noise)](https://github.com/juliuspleunes4/py-noise/stargazers)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 > A professional, secure, and easy-to-use implementation of the [Noise Protocol Framework](https://noiseprotocol.org/) in Python.
@@ -59,8 +59,8 @@ pip install py-noise
 ### From Source
 
 ```bash
-git clone https://github.com/juliuspleunes4/pynoise.git
-cd pynoise
+git clone https://github.com/juliuspleunes4/py-noise.git
+cd py-noise
 pip install -e .
 ```
 
@@ -340,8 +340,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 ### Development Setup
 
 ```bash
-git clone https://github.com/juliuspleunes4/pynoise.git
-cd pynoise
+git clone https://github.com/juliuspleunes4/py-noise.git
+cd py-noise
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e ".[dev]"
@@ -400,8 +400,8 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/juliuspleunes4/pynoise/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/juliuspleunes4/pynoise/discussions)
+- **Issues**: [GitHub Issues](https://github.com/juliuspleunes4/py-noise/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/juliuspleunes4/py-noise/discussions)
 - **Documentation**: [Full Documentation](https://pynoise.readthedocs.io/)
 
 ---
