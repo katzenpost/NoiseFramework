@@ -27,7 +27,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - SymmetricState for handshake state management
   - Key derivation and mixing operations
   - Split operation for transport encryption
-- Comprehensive test suite with 102 tests and 99% coverage
+- NoiseHandshake class for managing complete handshake protocol
+  - Role management (initiator/responder)
+  - All DH token operations (e, s, ee, es, se, ss)
+  - write_message() and read_message() for handshake steps
+  - to_transport() for converting to post-handshake cipher states
+  - Support for multiple patterns (NN, XX, NK, IK, KK, XK)
+- NoiseTransport class for post-handshake encrypted communication
+  - send() and receive() methods with associated data support
+  - Nonce tracking methods (get_send_nonce(), get_receive_nonce())
+  - Bidirectional encrypted communication wrapper
+- Public API exports in py_noise.__init__.py
+- Comprehensive test suite with 140 tests and 96% coverage
 - CLI module structure
 - Transport layer module structure
 - Comprehensive .gitignore for Python projects
