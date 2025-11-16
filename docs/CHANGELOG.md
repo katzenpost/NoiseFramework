@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Old: `from py_noise import NoiseHandshake`
   - New: `from noiseframework import NoiseHandshake`
 
+### Fixed
+- Package finder in pyproject.toml now correctly looks for `noiseframework*` instead of `py_noise*`
+- CLI entry point (`noiseframework` command) now correctly imports the renamed module
+
 ## [0.1.0] - 2025-11-16
 
 ### Added
