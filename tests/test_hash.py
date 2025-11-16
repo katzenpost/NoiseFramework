@@ -1,7 +1,7 @@
 """Tests for hash functions."""
 
 import pytest
-from py_noise.crypto.hash import SHA256, SHA512, BLAKE2s, BLAKE2b, get_hash_function
+from noiseframework.crypto.hash import SHA256, SHA512, BLAKE2s, BLAKE2b, get_hash_function
 
 
 class TestSHA256:

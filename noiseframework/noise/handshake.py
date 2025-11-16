@@ -8,11 +8,11 @@ the complete handshake flow according to the Noise specification.
 from typing import Optional, Tuple
 from enum import Enum
 
-from py_noise.noise.pattern import parse_pattern, get_pattern_tokens, NoisePattern
-from py_noise.noise.state import SymmetricState, CipherState
-from py_noise.crypto.dh import get_dh_function, DHFunction
-from py_noise.crypto.cipher import get_cipher_function, CipherFunction
-from py_noise.crypto.hash import get_hash_function, HashFunction
+from noiseframework.noise.pattern import parse_pattern, get_pattern_tokens, NoisePattern
+from noiseframework.noise.state import SymmetricState, CipherState
+from noiseframework.crypto.dh import get_dh_function, DHFunction
+from noiseframework.crypto.cipher import get_cipher_function, CipherFunction
+from noiseframework.crypto.hash import get_hash_function, HashFunction
 
 
 class Role(Enum):

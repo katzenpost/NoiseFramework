@@ -31,7 +31,7 @@ Main class for orchestrating Noise Protocol handshakes.
 #### Import
 
 ```python
-from py_noise import NoiseHandshake
+from noiseframework import NoiseHandshake
 ```
 
 #### Constructor
@@ -285,7 +285,7 @@ Transport layer for encrypted communication after handshake completion.
 #### Import
 
 ```python
-from py_noise.transport import NoiseTransport
+from noiseframework.transport import NoiseTransport
 ```
 
 #### Constructor
@@ -371,7 +371,7 @@ Get the current receive nonce value (for monitoring/debugging).
 #### `parse_pattern(pattern_string)`
 
 ```python
-from py_noise.noise.pattern import parse_pattern
+from noiseframework.noise.pattern import parse_pattern
 
 parse_pattern(pattern_string: str) -> NoisePattern
 ```
@@ -441,7 +441,7 @@ NoiseFramework supports all 12 fundamental interactive patterns:
 #### `get_dh_function(name)`
 
 ```python
-from py_noise.crypto.dh import get_dh_function
+from noiseframework.crypto.dh import get_dh_function
 
 get_dh_function(name: str) -> DHFunction
 ```
@@ -502,7 +502,7 @@ Perform Diffie-Hellman key agreement.
 #### `get_cipher_function(name)`
 
 ```python
-from py_noise.crypto.cipher import get_cipher_function
+from noiseframework.crypto.cipher import get_cipher_function
 
 get_cipher_function(name: str) -> CipherFunction
 ```
@@ -573,7 +573,7 @@ Decrypt and verify authentication.
 #### `get_hash_function(name)`
 
 ```python
-from py_noise.crypto.hash import get_hash_function
+from noiseframework.crypto.hash import get_hash_function
 
 get_hash_function(name: str) -> HashFunction
 ```
@@ -663,7 +663,7 @@ Internal state management for handshake cryptographic operations.
 #### Constructor
 
 ```python
-from py_noise.noise.state import SymmetricState
+from noiseframework.noise.state import SymmetricState
 
 SymmetricState(hash_fn: HashFunction, cipher_fn: CipherFunction) -> SymmetricState
 ```
@@ -689,7 +689,7 @@ Manages AEAD encryption with automatic nonce handling.
 #### Constructor
 
 ```python
-from py_noise.noise.state import CipherState
+from noiseframework.noise.state import CipherState
 
 CipherState(cipher_fn: CipherFunction) -> CipherState
 ```
@@ -709,7 +709,7 @@ CipherState(cipher_fn: CipherFunction) -> CipherState
 ### XX Pattern (Mutual Authentication)
 
 ```python
-from py_noise import NoiseHandshake
+from noiseframework import NoiseHandshake
 
 # === Setup ===
 # Initiator (client)
@@ -752,7 +752,7 @@ assert plaintext == b"Hello, server!"
 ### IK Pattern (Known Responder)
 
 ```python
-from py_noise import NoiseHandshake
+from noiseframework import NoiseHandshake
 
 # === Setup ===
 # Generate server's static keypair (done once, published)
@@ -812,8 +812,8 @@ NoiseFramework uses comprehensive type hints:
 
 ```python
 from typing import Optional, Tuple
-from py_noise import NoiseHandshake
-from py_noise.transport import NoiseTransport
+from noiseframework import NoiseHandshake
+from noiseframework.transport import NoiseTransport
 
 def setup_client(pattern: str) -> NoiseHandshake:
     handshake: NoiseHandshake = NoiseHandshake(pattern)

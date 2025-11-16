@@ -14,7 +14,7 @@ This is a demonstration only. A real chat application would need:
 - Connection handling
 """
 
-from py_noise import NoiseHandshake
+from noiseframework import NoiseHandshake
 
 
 class ChatParticipant:

@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ARCHITECTURE.md documenting internal design and component interactions
 - FAQ.md with common questions, troubleshooting, and best practices
 
+### Changed
+- **BREAKING**: Renamed internal package from `py_noise` to `noiseframework` for consistency
+  - Old: `from py_noise import NoiseHandshake`
+  - New: `from noiseframework import NoiseHandshake`
+
 ## [0.1.0] - 2025-11-16
 
 ### Added
@@ -55,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - info command for displaying supported primitives and patterns
   - Command aliases (genkey, validate)
   - Full argparse-based CLI with help and version flags
-- Public API exports in py_noise.__init__.py
+- Public API exports in noiseframework.__init__.py
 - CLI script entry point in pyproject.toml
 - Comprehensive documentation in README.md
   - Detailed Python API examples (XX, NN, IK patterns)

@@ -10,7 +10,7 @@ __author__ = "Julius Pleunes"
 __license__ = "MIT"
 
 # Public API exports
-from py_noise.noise.handshake import NoiseHandshake
+from noiseframework.noise.handshake import NoiseHandshake
 
 __all__ = [
     "__version__",

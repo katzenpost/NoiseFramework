@@ -9,10 +9,10 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from py_noise import NoiseHandshake
-from py_noise.transport.transport import NoiseTransport
-from py_noise.noise.pattern import parse_pattern, validate_pattern_string
-from py_noise.crypto.dh import get_dh_function
+from noiseframework import NoiseHandshake
+from noiseframework.transport.transport import NoiseTransport
+from noiseframework.noise.pattern import parse_pattern, validate_pattern_string
+from noiseframework.crypto.dh import get_dh_function
 
 
 def generate_keypair(args: argparse.Namespace) -> int:

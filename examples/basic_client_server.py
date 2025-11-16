@@ -10,7 +10,7 @@ The XX pattern provides mutual authentication where both parties exchange
 their static public keys during the handshake.
 """
 
-from py_noise import NoiseHandshake
+from noiseframework import NoiseHandshake
 
 
 def run_example():

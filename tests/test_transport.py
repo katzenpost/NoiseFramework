@@ -1,8 +1,8 @@
 """Tests for transport layer."""
 
 import pytest
-from py_noise.noise.handshake import NoiseHandshake
-from py_noise.transport.transport import NoiseTransport
+from noiseframework.noise.handshake import NoiseHandshake
+from noiseframework.transport.transport import NoiseTransport
 
 
 class TestNoiseTransport:

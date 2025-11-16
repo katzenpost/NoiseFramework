@@ -66,7 +66,7 @@ body:
       description: Provide a minimal code example that reproduces the issue
       render: python
       placeholder: |
-        from py_noise import NoiseHandshake
+        from noiseframework import NoiseHandshake
         
         handshake = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
         # ... code that triggers the bug

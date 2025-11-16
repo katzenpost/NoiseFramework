@@ -58,7 +58,7 @@ Issues = "https://github.com/juliuspleunes4/noiseframework/issues"
 Changelog = "https://github.com/juliuspleunes4/noiseframework/blob/main/docs/CHANGELOG.md"
 
 [project.scripts]
-noiseframework = "py_noise.cli.main:main"
+noiseframework = "noiseframework.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

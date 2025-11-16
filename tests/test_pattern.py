@@ -1,7 +1,7 @@
 """Tests for Noise pattern parsing."""
 
 import pytest
-from py_noise.noise.pattern import (
+from noiseframework.noise.pattern import (
     parse_pattern,
     get_pattern_tokens,
     validate_pattern_string,

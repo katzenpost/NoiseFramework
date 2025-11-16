@@ -5,7 +5,7 @@ Provides a simple wrapper around cipher states for ongoing encryption.
 """
 
 from typing import Optional
-from py_noise.noise.state import CipherState
+from noiseframework.noise.state import CipherState
 
 
 class NoiseTransport:

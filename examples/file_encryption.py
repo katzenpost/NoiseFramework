@@ -12,7 +12,7 @@ consider XX, IK, or other authenticated patterns.
 
 import sys
 from pathlib import Path
-from py_noise import NoiseHandshake
+from noiseframework import NoiseHandshake
 
 
 def encrypt_file(input_path: str, output_path: str):
