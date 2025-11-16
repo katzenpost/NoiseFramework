@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SECURITY.md with vulnerability reporting process and security considerations
 - CONTRIBUTING.md with comprehensive contribution guidelines
 - CODE_OF_CONDUCT.md based on Contributor Covenant 2.0
+- API.md with complete API reference documentation covering all public interfaces
 
 ## [0.1.0] - 2025-11-16
 
@@ -62,13 +63,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI module structure
 - Transport layer module structure
 - Comprehensive .gitignore for Python projects
-
-### Changed
-- Nothing yet
-
-### Fixed
-- Nothing yet
-
-## [0.1.0] - TBD
-
-- Initial release (not yet published)
