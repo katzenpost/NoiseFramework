@@ -5,7 +5,7 @@ import sys
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
-from py_noise.cli.main import main, generate_keypair, validate_pattern, show_info
+from noiseframework.cli.main import main, generate_keypair, validate_pattern, show_info
 
 
 class TestCLIGenerateKeypair:

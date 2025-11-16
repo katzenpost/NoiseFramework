@@ -56,7 +56,7 @@ NoiseFramework must be:
      - Prefer explicit parameters over magic behaviour.
    - For example, the typical usage should look something like:
      ```python
-     from py_noise import NoiseHandshake
+     from noiseframework import NoiseHandshake
 
      hs = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
      hs.initiator_handshake_step(...)

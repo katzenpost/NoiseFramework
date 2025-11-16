@@ -5,8 +5,8 @@ Implements the SymmetricState and CipherState objects from the Noise spec.
 """
 
 from typing import Optional, Tuple
-from py_noise.crypto.cipher import CipherFunction
-from py_noise.crypto.hash import HashFunction
+from noiseframework.crypto.cipher import CipherFunction
+from noiseframework.crypto.hash import HashFunction
 
 
 class CipherState:

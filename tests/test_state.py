@@ -1,9 +1,9 @@
 """Tests for symmetric state and cipher state."""
 
 import pytest
-from py_noise.noise.state import CipherState, SymmetricState
-from py_noise.crypto.cipher import ChaChaPoly
-from py_noise.crypto.hash import SHA256
+from noiseframework.noise.state import CipherState, SymmetricState
+from noiseframework.crypto.cipher import ChaChaPoly
+from noiseframework.crypto.hash import SHA256
 
 
 class TestCipherState:

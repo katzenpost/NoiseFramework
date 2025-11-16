@@ -1,7 +1,7 @@
 """Tests for Diffie-Hellman functions."""
 
 import pytest
-from py_noise.crypto.dh import Curve25519, Curve448, get_dh_function
+from noiseframework.crypto.dh import Curve25519, Curve448, get_dh_function
 
 
 class TestCurve25519:

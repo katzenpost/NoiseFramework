@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "noiseframework"
-version = "0.1.0"
+version = "1.1.0"
 description = "A professional, secure, and easy-to-use implementation of the Noise Protocol Framework in Python"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -26,7 +26,6 @@ keywords = [
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -59,11 +58,11 @@ Issues = "https://github.com/juliuspleunes4/noiseframework/issues"
 Changelog = "https://github.com/juliuspleunes4/noiseframework/blob/main/docs/CHANGELOG.md"
 
 [project.scripts]
-noiseframework = "py_noise.cli.main:main"
+noiseframework = "noiseframework.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["py_noise*"]
+include = ["noiseframework*"]
 exclude = ["tests*"]
 
 [tool.pytest.ini_options]

@@ -5,6 +5,29 @@ All notable changes to NoiseFramework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.1.0] - 2025-11-16
+
+### Added
+- SECURITY.md with vulnerability reporting process and security considerations
+- CONTRIBUTING.md with comprehensive contribution guidelines
+- CODE_OF_CONDUCT.md based on Contributor Covenant 2.0
+- API.md with complete API reference documentation covering all public interfaces
+- GitHub issue templates (bug report, feature request) and PR template
+- Examples directory with basic_client_server.py, file_encryption.py, and simple_chat.py
+- ARCHITECTURE.md documenting internal design and component interactions
+- FAQ.md with common questions, troubleshooting, and best practices
+
+### Changed
+- **BREAKING**: Renamed internal package from `py_noise` to `noiseframework` for consistency
+  - Old: `from py_noise import NoiseHandshake`
+  - New: `from noiseframework import NoiseHandshake`
+
+### Fixed
+- Package finder in pyproject.toml now correctly looks for `noiseframework*` instead of `py_noise*`
+- CLI entry point (`noiseframework` command) now correctly imports the renamed module
+
 ## [0.1.0] - 2025-11-16
 
 ### Added
@@ -43,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - info command for displaying supported primitives and patterns
   - Command aliases (genkey, validate)
   - Full argparse-based CLI with help and version flags
-- Public API exports in py_noise.__init__.py
+- Public API exports in noiseframework.__init__.py
 - CLI script entry point in pyproject.toml
 - Comprehensive documentation in README.md
   - Detailed Python API examples (XX, NN, IK patterns)
@@ -55,13 +78,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI module structure
 - Transport layer module structure
 - Comprehensive .gitignore for Python projects
-
-### Changed
-- Nothing yet
-
-### Fixed
-- Nothing yet
-
-## [0.1.0] - TBD
-
-- Initial release (not yet published)

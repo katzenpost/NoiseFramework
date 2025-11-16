@@ -1,7 +1,7 @@
 """Tests for AEAD cipher functions."""
 
 import pytest
-from py_noise.crypto.cipher import ChaChaPoly, AESGCMCipher, get_cipher_function
+from noiseframework.crypto.cipher import ChaChaPoly, AESGCMCipher, get_cipher_function
 
 
 class TestChaChaPoly:

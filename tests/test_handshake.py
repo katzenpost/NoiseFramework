@@ -1,7 +1,7 @@
 """Tests for Noise handshake state machine."""
 
 import pytest
-from py_noise.noise.handshake import NoiseHandshake, Role
+from noiseframework.noise.handshake import NoiseHandshake, Role
 
 
 class TestNoiseHandshakeInit:

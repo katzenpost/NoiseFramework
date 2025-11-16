@@ -26,6 +26,7 @@
   - [Pre-Shared Key Pattern (Noise_IK)](#pre-shared-key-pattern-noise_ik)
   - [Transport Layer Encryption](#transport-layer-encryption)
   - [Error Handling](#error-handling)
+- [Complete API Reference](docs/API.md)
 - [CLI Documentation](#-cli-documentation)
   - [Generate Keypair](#generate-keypair)
   - [Validate Pattern](#validate-pattern)
@@ -84,8 +85,8 @@ pip install -e .
 ### Python API
 
 ```python
-from py_noise import NoiseHandshake
-from py_noise.transport.transport import NoiseTransport
+from noiseframework import NoiseHandshake
+from noiseframework.transport.transport import NoiseTransport
 
 # === INITIATOR SIDE ===
 initiator = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
@@ -149,8 +150,8 @@ noiseframework validate "Noise_XX_25519_ChaChaPoly_SHA256"
 The `XX` pattern provides mutual authentication with no prior knowledge required. Both parties exchange static keys during the handshake.
 
 ```python
-from py_noise import NoiseHandshake
-from py_noise.transport.transport import NoiseTransport
+from noiseframework import NoiseHandshake
+from noiseframework.transport.transport import NoiseTransport
 
 # === INITIATOR SIDE ===
 initiator = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
@@ -205,8 +206,8 @@ assert plaintext == b"Response data"
 The `NN` pattern provides encryption without authentication. No static keys are required.
 
 ```python
-from py_noise import NoiseHandshake
-from py_noise.transport.transport import NoiseTransport
+from noiseframework import NoiseHandshake
+from noiseframework.transport.transport import NoiseTransport
 
 # === INITIATOR SIDE ===
 initiator = NoiseHandshake("Noise_NN_25519_ChaChaPoly_SHA256")
@@ -246,8 +247,8 @@ plaintext = resp_transport.receive(ciphertext)
 The `IK` pattern allows the initiator to know the responder's static public key in advance. The initiator's identity is hidden.
 
 ```python
-from py_noise import NoiseHandshake
-from py_noise.transport.transport import NoiseTransport
+from noiseframework import NoiseHandshake
+from noiseframework.transport.transport import NoiseTransport
 
 # === SETUP: Generate responder's static keypair ===
 responder_setup = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
@@ -297,7 +298,7 @@ plaintext = resp_transport.receive(ciphertext)
 After handshake completion, use the transport layer for ongoing encrypted communication:
 
 ```python
-from py_noise.transport.transport import NoiseTransport
+from noiseframework.transport.transport import NoiseTransport
 
 # After successful handshake, get cipher states
 send_cipher, recv_cipher = handshake.to_transport()
@@ -328,7 +329,7 @@ print(f"Messages received: {transport.get_receive_nonce()}")
 ### Error Handling
 
 ```python
-from py_noise import NoiseHandshake
+from noiseframework import NoiseHandshake
 
 try:
     # Invalid pattern string
@@ -391,7 +392,7 @@ Generated keypair:
 **Usage in Python:**
 ```python
 from pathlib import Path
-from py_noise import NoiseHandshake
+from noiseframework import NoiseHandshake
 
 # Load generated keys
 private_key = Path("mykey_private.key").read_bytes()
@@ -577,7 +578,7 @@ NoiseFramework is designed for correctness and security first, with reasonable p
 **Benchmarking:**
 ```python
 import time
-from py_noise import NoiseHandshake
+from noiseframework import NoiseHandshake
 
 # Benchmark handshake
 start = time.perf_counter()
@@ -632,7 +633,7 @@ Contributions are welcome! Please follow these guidelines:
 5. **Run the test suite**: Ensure all tests pass
 6. **Submit a pull request**: Describe your changes clearly
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
 
 ### Development Setup
 
