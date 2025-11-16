@@ -850,7 +850,7 @@ def setup_client(pattern: str) -> NoiseHandshake:
 
 ## Version
 
-The documentation mentioned above is up-to-date for **NoiseFramework v0.1.0**.
+The documentation mentioned above is up-to-date for **NoiseFramework v1.1.0**.
 > Newer versions, might not have the updated documentation yet.
 
 For the latest updates, see the [CHANGELOG](CHANGELOG.md).
