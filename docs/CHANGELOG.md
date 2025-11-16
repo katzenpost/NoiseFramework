@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Py-Noise will be documented in this file.
+All notable changes to NoiseFramework will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - send() and receive() methods with associated data support
   - Nonce tracking methods (get_send_nonce(), get_receive_nonce())
   - Bidirectional encrypted communication wrapper
-- Command-line interface (py-noise CLI)
+- Command-line interface (noiseframework CLI)
   - generate-keypair command for creating static keypairs
   - validate-pattern command for validating Noise pattern strings
   - info command for displaying supported primitives and patterns

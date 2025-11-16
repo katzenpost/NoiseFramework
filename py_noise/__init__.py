@@ -1,5 +1,5 @@
 """
-Py-Noise: A professional implementation of the Noise Protocol Framework in Python.
+NoiseFramework: A professional implementation of the Noise Protocol Framework in Python.
 
 This package provides cryptographically sound, specification-compliant implementations
 of Noise handshake patterns for building secure communication channels.

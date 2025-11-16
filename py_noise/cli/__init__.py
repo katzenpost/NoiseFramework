@@ -1,1 +1,1 @@
-"""Command-line interface for Py-Noise."""
+"""Command-line interface for NoiseFramework."""

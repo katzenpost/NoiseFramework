@@ -1,4 +1,4 @@
-# Py-Noise
+# NoiseFramework
 
 [![PyPI version](https://img.shields.io/pypi/v/noiseframework.svg)](https://pypi.org/project/noiseframework/)
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
@@ -9,7 +9,7 @@
 
 > A professional, secure, and easy-to-use implementation of the [Noise Protocol Framework](https://noiseprotocol.org/) in Python.
 
-**Py-Noise** provides cryptographically sound, specification-compliant implementations of Noise handshake patterns for building secure communication channels. It is designed to be both simple to integrate into applications and robust enough for production use.
+**NoiseFramework** provides cryptographically sound, specification-compliant implementations of Noise handshake patterns for building secure communication channels. It is designed to be both simple to integrate into applications and robust enough for production use.
 
 ---
 
@@ -361,7 +361,7 @@ else:
 
 ## 🖥️ CLI Documentation
 
-The `py-noise` command-line tool provides easy access to key operations without writing code.
+The `NoiseFramework` command-line tool provides easy access to key operations without writing code.
 
 ### Generate Keypair
 
@@ -441,7 +441,7 @@ noiseframework info
 
 **Output:**
 ```
-Py-Noise - Noise Protocol Framework Implementation
+NoiseFramework - Noise Protocol Framework Implementation
 
 Supported DH functions:
   - 25519 (Curve25519/X25519)
@@ -479,7 +479,7 @@ noiseframework --version
 
 ## 🔐 Supported Patterns
 
-Py-Noise supports all fundamental and interactive Noise patterns:
+NoiseFramework supports all fundamental and interactive Noise patterns:
 
 | Pattern | Description | Use Case |
 |---------|-------------|----------|
@@ -505,7 +505,7 @@ Py-Noise supports all fundamental and interactive Noise patterns:
 
 ## 🔑 Cryptographic Primitives
 
-Py-Noise uses battle-tested cryptographic libraries:
+NoiseFramework uses battle-tested cryptographic libraries:
 
 ### Diffie-Hellman Functions
 - **Curve25519** (X25519) - Recommended
@@ -530,7 +530,7 @@ Format: `Noise_[PATTERN]_[DH]_[CIPHER]_[HASH]`
 ## 🏗️ Architecture
 
 ```
-py-noise/
+noiseframework/
 ├── py_noise/
 │   ├── __init__.py          # Public API
 │   ├── noise/
@@ -562,13 +562,13 @@ py-noise/
 
 ## 🧪 Testing
 
-Py-Noise has comprehensive test coverage with 156 tests achieving 92% code coverage.
+NoiseFramework has comprehensive test coverage with 156 tests achieving 92% code coverage.
 
 ---
 
 ## ⚡ Performance
 
-Py-Noise is designed for correctness and security first, with reasonable performance for most use cases:
+NoiseFramework is designed for correctness and security first, with reasonable performance for most use cases:
 
 - **Handshake**: ~1-2ms for XX pattern on modern hardware
 - **Transport encryption**: ~100MB/s for large messages
@@ -655,7 +655,7 @@ pip install -e ".[dev]"
 - **IK**: When client knows server's key in advance (like Tor)
 - **NK**: When server identity is public (like HTTPS with pinning)
 
-### Is Py-Noise production-ready?
+### Is NoiseFramework production-ready?
 
 Yes, but with caveats:
 - ✅ Cryptographically sound (uses battle-tested primitives)
@@ -666,9 +666,9 @@ Yes, but with caveats:
 
 ### How does it compare to other Noise implementations?
 
-- **PyNaCl/libsodium**: Lower-level, Py-Noise is higher-level Noise protocol
-- **noiseprotocol (Python)**: Similar, but Py-Noise has better docs and CLI
-- **snow (Rust)**: Faster, but Py-Noise is pure Python with better accessibility
+- **PyNaCl/libsodium**: Lower-level, NoiseFramework is higher-level Noise protocol
+- **noiseprotocol (Python)**: Similar, but NoiseFramework has better docs and CLI
+- **snow (Rust)**: Faster, but NoiseFramework is pure Python with better accessibility
 
 ### Can I use custom cryptographic primitives?
 
@@ -694,13 +694,13 @@ If you discover a security vulnerability, please **DO NOT** open a public issue.
 
 - **Key Management**: Never hard-code keys in source code
 - **RNG**: Use system-provided cryptographically secure random number generators
-- **Updates**: Keep Py-Noise and its dependencies up-to-date
+- **Updates**: Keep NoiseFramework and its dependencies up-to-date
 - **Audit**: Consider professional security audits for production use
 - **Side-Channels**: Be aware of timing and other side-channel attacks
 
 ### Dependencies
 
-Py-Noise relies on:
+NoiseFramework relies on:
 - `cryptography` - Audited, well-maintained Python cryptography library
 - No custom cryptographic primitives
 

@@ -1,8 +1,8 @@
-# Copilot Instructions – Py-Noise
+# Copilot Instructions – NoiseFramework
 
-These are **project-wide instructions** for GitHub Copilot working on **Py-Noise**, a professional open-source implementation of the Noise Protocol Framework in Python. 
+These are **project-wide instructions** for GitHub Copilot working on **NoiseFramework**, a professional open-source implementation of the Noise Protocol Framework in Python. 
 
-Py-Noise must be:
+NoiseFramework must be:
 - **Correct** (cryptographically and spec-compliant)
 - **Secure by default**
 - **Easy to use** (simple Python API + simple CLI)
@@ -152,9 +152,9 @@ Py-Noise must be:
    - If extending the CLI, keep commands **simple and predictable**.
    - Aim for intuitive commands such as:
      ```bash
-     py-noise handshake --pattern Noise_XX_25519_ChaChaPoly_SHA256
-     py-noise encrypt --in file --out file.enc
-     py-noise decrypt --in file.enc --out file
+     noiseframework handshake --pattern Noise_XX_25519_ChaChaPoly_SHA256
+     noiseframework encrypt --in file --out file.enc
+     noiseframework decrypt --in file.enc --out file
      ```
    - Use clear, descriptive help messages and `--help` output.
 
@@ -219,4 +219,4 @@ Py-Noise must be:
 - **ALWAYS add or update tests whenever you add or change a feature.**
 - **NO mock data in production code (only in tests).**
 - **Follow existing project conventions, layout, and style.**
-- **Treat Py-Noise as a serious, professional cryptographic project.**
+- **Treat NoiseFramework as a serious, professional cryptographic project.**

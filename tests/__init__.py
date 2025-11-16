@@ -1,1 +1,1 @@
-"""Test suite for Py-Noise."""
+"""Test suite for NoiseFramework."""

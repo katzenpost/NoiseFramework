@@ -1,5 +1,5 @@
 """
-Command-line interface for Py-Noise.
+Command-line interface for NoiseFramework.
 
 Provides commands for handshakes, encryption, decryption, and key generation.
 """
@@ -110,8 +110,8 @@ def decrypt_file(args: argparse.Namespace) -> int:
 
 
 def show_info(args: argparse.Namespace) -> int:
-    """Show information about Py-Noise capabilities."""
-    print("Py-Noise - Noise Protocol Framework Implementation")
+    """Show information about NoiseFramework capabilities."""
+    print("NoiseFramework - Noise Protocol Framework Implementation")
     print()
     print("Supported DH functions:")
     print("  - 25519 (Curve25519/X25519)")
@@ -240,7 +240,7 @@ def main() -> int:
     # Info command
     info_parser = subparsers.add_parser(
         "info",
-        help="Show information about Py-Noise capabilities",
+        help="Show information about NoiseFramework capabilities",
     )
     info_parser.set_defaults(func=show_info)
     
