@@ -26,6 +26,7 @@
   - [Pre-Shared Key Pattern (Noise_IK)](#pre-shared-key-pattern-noise_ik)
   - [Transport Layer Encryption](#transport-layer-encryption)
   - [Error Handling](#error-handling)
+- [Complete API Reference](docs/API.md)
 - [CLI Documentation](#-cli-documentation)
   - [Generate Keypair](#generate-keypair)
   - [Validate Pattern](#validate-pattern)

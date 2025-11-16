@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CONTRIBUTING.md with comprehensive contribution guidelines
 - CODE_OF_CONDUCT.md based on Contributor Covenant 2.0
 - API.md with complete API reference documentation covering all public interfaces
+- GitHub issue templates (bug report, feature request) and PR template
+- Examples directory with basic_client_server.py, file_encryption.py, and simple_chat.py
+- ARCHITECTURE.md documenting internal design and component interactions
+- FAQ.md with common questions, troubleshooting, and best practices
 
 ## [0.1.0] - 2025-11-16
 

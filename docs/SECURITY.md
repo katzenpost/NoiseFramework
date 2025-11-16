@@ -16,9 +16,10 @@ If you discover a security vulnerability in NoiseFramework, please report it pri
 
 ### How to Report
 
-1. **Email**: Send details to [your-email@example.com]
-2. **Subject**: Use "SECURITY: NoiseFramework - [Brief Description]"
-3. **Include**:
+1. **GitHub Security Advisories**: Report via [GitHub Security Advisories](https://github.com/juliuspleunes4/noiseframework/security/advisories/new) (preferred)
+2. **Email**: Alternatively, send details to the maintainer via GitHub
+3. **Subject**: Use "SECURITY: NoiseFramework - [Brief Description]"
+4. **Include**:
    - Description of the vulnerability
    - Steps to reproduce
    - Potential impact
