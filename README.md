@@ -355,7 +355,7 @@ pip install -e ".[dev]"
 
 If you discover a security vulnerability, please **DO NOT** open a public issue. Instead:
 
-1. Email security concerns to: [security@example.com]
+1. Email security concerns to: [jjgpleunes@gmail.com]
 2. Include a detailed description and steps to reproduce
 3. Allow reasonable time for a fix before public disclosure
 
@@ -386,7 +386,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - **[Trevor Perrin](https://github.com/trevp)** - Creator of the Noise Protocol Framework
 - **Noise Protocol Community** - For the specification and test vectors
 - **PyCA Cryptography** - For providing robust cryptographic primitives
-- All contributors who have helped improve this project
 
 ---
 
