@@ -62,7 +62,7 @@ noiseframework = "noiseframework.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["py_noise*"]
+include = ["noiseframework*"]
 exclude = ["tests*"]
 
 [tool.pytest.ini_options]
