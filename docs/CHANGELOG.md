@@ -45,6 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Full argparse-based CLI with help and version flags
 - Public API exports in py_noise.__init__.py
 - CLI script entry point in pyproject.toml
+- Comprehensive documentation in README.md
+  - Detailed Python API examples (XX, NN, IK patterns)
+  - Complete CLI documentation with usage examples
+  - Error handling examples
+  - Performance benchmarking guide
+  - FAQ section
 - Comprehensive test suite with 156 tests and 92% coverage
 - CLI module structure
 - Transport layer module structure
