@@ -9,12 +9,10 @@ __version__ = "0.1.0"
 __author__ = "Julius Pleunes"
 __license__ = "MIT"
 
-# Public API exports will go here once implemented
-# from py_noise.noise.handshake import NoiseHandshake
-# from py_noise.transport.transport import NoiseTransport
+# Public API exports
+from py_noise.noise.handshake import NoiseHandshake
 
 __all__ = [
     "__version__",
-    # "NoiseHandshake",
-    # "NoiseTransport",
+    "NoiseHandshake",
 ]
