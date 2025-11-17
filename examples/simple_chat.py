@@ -14,7 +14,7 @@ This is a demonstration only. A real chat application would need:
 - Connection handling
 """
 
-from noiseframework import NoiseHandshake
+from noiseframework import NoiseHandshake, NoiseTransport
 
 
 class ChatParticipant:
@@ -42,8 +42,7 @@ class ChatParticipant:
         # Initialize handshake
         self.handshake.initialize()
 
-        self.send_cipher = None
-        self.recv_cipher = None
+        self.transport = None
 
     def complete_handshake(self, other: "ChatParticipant"):
         """Perform handshake with another participant.
@@ -69,8 +68,11 @@ class ChatParticipant:
             pass
 
         # Convert to transport
-        self.send_cipher, self.recv_cipher = self.handshake.to_transport()
-        other.send_cipher, other.recv_cipher = other.handshake.to_transport()
+        send_cipher, recv_cipher = self.handshake.to_transport()
+        other_send, other_recv = other.handshake.to_transport()
+        
+        self.transport = NoiseTransport(send_cipher, recv_cipher)
+        other.transport = NoiseTransport(other_send, other_recv)
 
     def send_message(self, text: str) -> bytes:
         """Encrypt and send a message.
@@ -82,7 +84,7 @@ class ChatParticipant:
             Encrypted message bytes
         """
         plaintext = f"{self.name}: {text}".encode()
-        return self.send_cipher.encrypt_with_ad(b"", plaintext)
+        return self.transport.send(plaintext)
 
     def receive_message(self, ciphertext: bytes) -> str:
         """Receive and decrypt a message.
@@ -93,7 +95,7 @@ class ChatParticipant:
         Returns:
             Decrypted message text
         """
-        plaintext = self.recv_cipher.decrypt_with_ad(b"", ciphertext)
+        plaintext = self.transport.receive(ciphertext)
         return plaintext.decode()
 
 
@@ -166,8 +168,8 @@ def run_example():
     print(f"   Messages sent by {alice.name}: 5")
     print(f"   Messages sent by {bob.name}: 4")
     print(f"   Total messages: 9")
-    print(f"   {alice.name} send nonce: {alice.send_cipher.nonce}")
-    print(f"   {bob.name} send nonce: {bob.send_cipher.nonce}")
+    print(f"   {alice.name} send nonce: {alice.transport.get_send_nonce()}")
+    print(f"   {bob.name} send nonce: {bob.transport.get_send_nonce()}")
     print()
 
     print("=" * 60)

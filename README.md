@@ -84,8 +84,7 @@ pip install -e .
 ### Python API
 
 ```python
-from py_noise import NoiseHandshake
-from py_noise.transport.transport import NoiseTransport
+from noiseframework import NoiseHandshake, NoiseTransport
 
 # === INITIATOR SIDE ===
 initiator = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
@@ -100,13 +99,13 @@ responder.generate_static_keypair()
 responder.initialize()
 
 # === HANDSHAKE ===
-msg1 = initiator.write_message()
+msg1 = initiator.write_message(b"")
 responder.read_message(msg1)
 
-msg2 = responder.write_message()
+msg2 = responder.write_message(b"")
 initiator.read_message(msg2)
 
-msg3 = initiator.write_message()
+msg3 = initiator.write_message(b"")
 responder.read_message(msg3)
 
 # === TRANSPORT ENCRYPTION ===
@@ -149,8 +148,7 @@ noiseframework validate "Noise_XX_25519_ChaChaPoly_SHA256"
 The `XX` pattern provides mutual authentication with no prior knowledge required. Both parties exchange static keys during the handshake.
 
 ```python
-from noiseframework import NoiseHandshake
-from noiseframework.transport.transport import NoiseTransport
+from noiseframework import NoiseHandshake, NoiseTransport
 
 # === INITIATOR SIDE ===
 initiator = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
@@ -159,7 +157,7 @@ initiator.generate_static_keypair()  # Generate static key
 initiator.initialize()
 
 # Send first message (-> e)
-msg1 = initiator.write_message()
+msg1 = initiator.write_message(b"")
 
 # === RESPONDER SIDE ===
 responder = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
@@ -169,12 +167,12 @@ responder.initialize()
 
 # Process first message and send response (-> e, ee, s, es)
 responder.read_message(msg1)
-msg2 = responder.write_message()
+msg2 = responder.write_message(b"")
 
 # === INITIATOR SIDE (continued) ===
 # Process second message and send final (-> s, se)
 initiator.read_message(msg2)
-msg3 = initiator.write_message()
+msg3 = initiator.write_message(b"")
 
 # === RESPONDER SIDE (continued) ===
 # Process final message
@@ -205,8 +203,7 @@ assert plaintext == b"Response data"
 The `NN` pattern provides encryption without authentication. No static keys are required.
 
 ```python
-from noiseframework import NoiseHandshake
-from noiseframework.transport.transport import NoiseTransport
+from noiseframework import NoiseHandshake, NoiseTransport
 
 # === INITIATOR SIDE ===
 initiator = NoiseHandshake("Noise_NN_25519_ChaChaPoly_SHA256")
@@ -214,7 +211,7 @@ initiator.set_as_initiator()
 initiator.initialize()
 
 # Send first message (-> e)
-msg1 = initiator.write_message()
+msg1 = initiator.write_message(b"")
 
 # === RESPONDER SIDE ===
 responder = NoiseHandshake("Noise_NN_25519_ChaChaPoly_SHA256")
@@ -223,7 +220,7 @@ responder.initialize()
 
 # Process first message and send response (-> e, ee)
 responder.read_message(msg1)
-msg2 = responder.write_message()
+msg2 = responder.write_message(b"")
 
 # === INITIATOR SIDE (continued) ===
 # Process second message - handshake complete
@@ -246,8 +243,7 @@ plaintext = resp_transport.receive(ciphertext)
 The `IK` pattern allows the initiator to know the responder's static public key in advance. The initiator's identity is hidden.
 
 ```python
-from noiseframework import NoiseHandshake
-from noiseframework.transport.transport import NoiseTransport
+from noiseframework import NoiseHandshake, NoiseTransport
 
 # === SETUP: Generate responder's static keypair ===
 responder_setup = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
@@ -264,7 +260,7 @@ initiator.set_remote_static_public_key(responder_public)  # Know responder's key
 initiator.initialize()
 
 # Send first message (-> e, es, s, ss)
-msg1 = initiator.write_message()
+msg1 = initiator.write_message(b"")
 
 # === RESPONDER SIDE ===
 responder = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
@@ -274,7 +270,7 @@ responder.initialize()
 
 # Process first message and send response (-> e, ee, se)
 responder.read_message(msg1)
-msg2 = responder.write_message()
+msg2 = responder.write_message(b"")
 
 # === INITIATOR SIDE (continued) ===
 # Process second message - handshake complete
@@ -297,7 +293,7 @@ plaintext = resp_transport.receive(ciphertext)
 After handshake completion, use the transport layer for ongoing encrypted communication:
 
 ```python
-from noiseframework.transport.transport import NoiseTransport
+from noiseframework import NoiseTransport
 
 # After successful handshake, get cipher states
 send_cipher, recv_cipher = handshake.to_transport()
@@ -531,13 +527,12 @@ Format: `Noise_[PATTERN]_[DH]_[CIPHER]_[HASH]`
 
 ```
 noiseframework/
-├── py_noise/
+├── noiseframework/
 │   ├── __init__.py          # Public API
 │   ├── noise/
 │   │   ├── handshake.py     # Handshake state machine
 │   │   ├── pattern.py       # Pattern parser and validator
-│   │   ├── state.py         # Cipher and symmetric state
-│   │   └── protocol.py      # Core protocol logic
+│   │   └── state.py         # Cipher and symmetric state
 │   ├── crypto/
 │   │   ├── dh.py            # Diffie-Hellman functions
 │   │   ├── cipher.py        # AEAD cipher implementations
@@ -550,8 +545,13 @@ noiseframework/
 │   ├── test_handshake.py
 │   ├── test_transport.py
 │   ├── test_patterns.py
-│   └── test_vectors.py      # Official test vectors
+│   └── test_cipher.py
+├── examples/
+│   ├── basic_client_server.py
+│   ├── simple_chat.py
+│   └── file_encryption.py
 ├── docs/
+│   ├── API.md
 │   ├── CHANGELOG.md
 │   └── ...
 ├── pyproject.toml
@@ -577,7 +577,7 @@ NoiseFramework is designed for correctness and security first, with reasonable p
 **Benchmarking:**
 ```python
 import time
-from py_noise import NoiseHandshake
+from noiseframework import NoiseHandshake
 
 # Benchmark handshake
 start = time.perf_counter()
@@ -603,7 +603,7 @@ pip install -e ".[dev]"
 pytest
 
 # Run with coverage
-pytest --cov=py_noise --cov-report=html
+pytest --cov=noiseframework --cov-report=html
 
 # Run specific test file
 pytest tests/test_handshake.py
