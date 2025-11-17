@@ -25,12 +25,11 @@ def run_example():
     client.set_as_initiator()
 
     # Generate and set client's static keypair
-    client_private, client_public = client.generate_keypair()
-    client.set_static_keypair(client_private, client_public)
-    print(f"   Client public key: {client_public.hex()[:32]}...")
+    client.generate_static_keypair()
+    print(f"   Client public key: {client.static_public.hex()[:32]}...")
 
-    # Start client handshake
-    client.start(prologue=b"Example v1.0")
+    # Initialize client handshake
+    client.initialize()
     print("   ✓ Client initialized\n")
 
     # === Server Setup ===
@@ -39,12 +38,11 @@ def run_example():
     server.set_as_responder()
 
     # Generate and set server's static keypair
-    server_private, server_public = server.generate_keypair()
-    server.set_static_keypair(server_private, server_public)
-    print(f"   Server public key: {server_public.hex()[:32]}...")
+    server.generate_static_keypair()
+    print(f"   Server public key: {server.static_public.hex()[:32]}...")
 
-    # Start server handshake
-    server.start(prologue=b"Example v1.0")
+    # Initialize server handshake
+    server.initialize()
     print("   ✓ Server initialized\n")
 
     # === Handshake Phase ===
@@ -71,21 +69,21 @@ def run_example():
     print("   ✓ Handshake complete!\n")
 
     # Verify handshake completed
-    assert client.handshake_finished
-    assert server.handshake_finished
+    assert client.handshake_complete
+    assert server.handshake_complete
 
     # Verify mutual authentication (both parties have each other's static keys)
     print("🔐 Verifying mutual authentication...")
     print(f"   Client received server key: {client.remote_static_public.hex()[:32]}...")
     print(f"   Server received client key: {server.remote_static_public.hex()[:32]}...")
-    assert client.remote_static_public == server_public
-    assert server.remote_static_public == client_public
+    assert client.remote_static_public == server.static_public
+    assert server.remote_static_public == client.static_public
     print("   ✓ Both parties authenticated!\n")
 
     # === Transport Phase ===
     print("🔒 Converting to transport mode...")
-    client_transport = client.to_transport()
-    server_transport = server.to_transport()
+    client_send, client_recv = client.to_transport()
+    server_send, server_recv = server.to_transport()
     print("   ✓ Transport mode active\n")
 
     # === Encrypted Communication ===
@@ -94,9 +92,9 @@ def run_example():
     # Client -> Server
     message1 = b"Hello from client!"
     print(f"   Client: '{message1.decode()}'")
-    ciphertext1 = client_transport.send(message1)
+    ciphertext1 = client_send.encrypt_with_ad(b"", message1)
     print(f"          Encrypted: {ciphertext1.hex()[:40]}...")
-    received1 = server_transport.receive(ciphertext1)
+    received1 = server_recv.decrypt_with_ad(b"", ciphertext1)
     print(f"          Server received: '{received1.decode()}'")
     assert received1 == message1
 
@@ -105,9 +103,9 @@ def run_example():
     # Server -> Client
     message2 = b"Hello from server!"
     print(f"   Server: '{message2.decode()}'")
-    ciphertext2 = server_transport.send(message2)
+    ciphertext2 = server_send.encrypt_with_ad(b"", message2)
     print(f"          Encrypted: {ciphertext2.hex()[:40]}...")
-    received2 = client_transport.receive(ciphertext2)
+    received2 = client_recv.decrypt_with_ad(b"", ciphertext2)
     print(f"          Client received: '{received2.decode()}'")
     assert received2 == message2
 
@@ -117,8 +115,8 @@ def run_example():
     print("   📨 Sending multiple messages...")
     for i in range(3):
         msg = f"Message {i+1}".encode()
-        ct = client_transport.send(msg)
-        pt = server_transport.receive(ct)
+        ct = client_send.encrypt_with_ad(b"", msg)
+        pt = server_recv.decrypt_with_ad(b"", ct)
         print(f"      [{i+1}] Sent and received: '{pt.decode()}'")
         assert pt == msg
 

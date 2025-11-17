@@ -36,14 +36,14 @@ class ChatParticipant:
             self.handshake.set_as_responder()
 
         # Generate keypair
-        priv, pub = self.handshake.generate_keypair()
-        self.handshake.set_static_keypair(priv, pub)
-        self.public_key = pub
+        self.handshake.generate_static_keypair()
+        self.public_key = self.handshake.static_public
 
-        # Start handshake
-        self.handshake.start(prologue=f"SimpleChat v1.0 - {name}".encode())
+        # Initialize handshake
+        self.handshake.initialize()
 
-        self.transport = None
+        self.send_cipher = None
+        self.recv_cipher = None
 
     def complete_handshake(self, other: "ChatParticipant"):
         """Perform handshake with another participant.
@@ -69,8 +69,8 @@ class ChatParticipant:
             pass
 
         # Convert to transport
-        self.transport = self.handshake.to_transport()
-        other.transport = other.handshake.to_transport()
+        self.send_cipher, self.recv_cipher = self.handshake.to_transport()
+        other.send_cipher, other.recv_cipher = other.handshake.to_transport()
 
     def send_message(self, text: str) -> bytes:
         """Encrypt and send a message.
@@ -82,7 +82,7 @@ class ChatParticipant:
             Encrypted message bytes
         """
         plaintext = f"{self.name}: {text}".encode()
-        return self.transport.send(plaintext)
+        return self.send_cipher.encrypt_with_ad(b"", plaintext)
 
     def receive_message(self, ciphertext: bytes) -> str:
         """Receive and decrypt a message.
@@ -93,7 +93,7 @@ class ChatParticipant:
         Returns:
             Decrypted message text
         """
-        plaintext = self.transport.receive(ciphertext)
+        plaintext = self.recv_cipher.decrypt_with_ad(b"", ciphertext)
         return plaintext.decode()
 
 
@@ -166,8 +166,8 @@ def run_example():
     print(f"   Messages sent by {alice.name}: 5")
     print(f"   Messages sent by {bob.name}: 4")
     print(f"   Total messages: 9")
-    print(f"   {alice.name} send nonce: {alice.transport.get_send_nonce()}")
-    print(f"   {bob.name} send nonce: {bob.transport.get_send_nonce()}")
+    print(f"   {alice.name} send nonce: {alice.send_cipher.nonce}")
+    print(f"   {bob.name} send nonce: {bob.send_cipher.nonce}")
     print()
 
     print("=" * 60)

@@ -2,12 +2,12 @@
 File encryption example using Noise Protocol.
 
 This example demonstrates:
-- Using Noise_NN pattern for simple encryption
-- Encrypting and decrypting file contents
-- Saving/loading handshake messages
+- Using CipherState directly for file encryption
+- Encrypting and decrypting file contents with a derived key
+- Simple key-based encryption without handshake
 
-Note: NN pattern provides no authentication. For production use,
-consider XX, IK, or other authenticated patterns.
+Note: This uses a simple password-based approach for demonstration.
+In production, use proper key derivation and key management.
 """
 
 import sys
@@ -15,7 +15,7 @@ from pathlib import Path
 from noiseframework import NoiseHandshake
 
 
-def encrypt_file(input_path: str, output_path: str):
+def encrypt_file(input_path: str, output_path: str, password: str = "secret"):
     """Encrypt a file using Noise Protocol."""
     print(f"🔒 Encrypting '{input_path}' -> '{output_path}'")
 
@@ -28,45 +28,34 @@ def encrypt_file(input_path: str, output_path: str):
     plaintext = input_file.read_bytes()
     print(f"   Read {len(plaintext)} bytes")
 
-    # Setup handshake (NN pattern - no authentication)
-    encryptor = NoiseHandshake("Noise_NN_25519_ChaChaPoly_SHA256")
-    encryptor.set_as_initiator()
-    encryptor.start()
-
-    decryptor = NoiseHandshake("Noise_NN_25519_ChaChaPoly_SHA256")
-    decryptor.set_as_responder()
-    decryptor.start()
-
-    # Perform handshake
-    msg1 = encryptor.write_message(b"")
-    decryptor.read_message(msg1)
-
-    msg2 = decryptor.write_message(b"")
-    encryptor.read_message(msg2)
-
-    # Convert to transport
-    enc_transport = encryptor.to_transport()
-
-    # Encrypt the file content
-    ciphertext = enc_transport.send(plaintext)
+    # Create a simple cipher from password (demonstration only!)
+    # In production, use proper KDF like HKDF
+    from noiseframework.noise.state import CipherState
+    from noiseframework.crypto.cipher import ChaChaPoly
+    from noiseframework.crypto.hash import SHA256
+    
+    # Derive key from password
+    hasher = SHA256()
+    key = hasher.hash(password.encode())
+    
+    # Create cipher state
+    cipher_func = ChaChaPoly()
+    cipher_state = CipherState(cipher_func)
+    cipher_state.initialize_key(key)
+    
+    # Encrypt
+    ciphertext = cipher_state.encrypt_with_ad(b"", plaintext)
     print(f"   Encrypted to {len(ciphertext)} bytes")
 
-    # Save encrypted data with handshake messages
+    # Save encrypted data
     output_file = Path(output_path)
-    with output_file.open("wb") as f:
-        # Write handshake messages (needed for decryption)
-        f.write(len(msg1).to_bytes(4, "big"))
-        f.write(msg1)
-        f.write(len(msg2).to_bytes(4, "big"))
-        f.write(msg2)
-        # Write encrypted content
-        f.write(ciphertext)
+    output_file.write_bytes(ciphertext)
 
     print(f"   ✓ Saved to '{output_path}'")
     return True
 
 
-def decrypt_file(input_path: str, output_path: str):
+def decrypt_file(input_path: str, output_path: str, password: str = "secret"):
     """Decrypt a file encrypted with Noise Protocol."""
     print(f"🔓 Decrypting '{input_path}' -> '{output_path}'")
 
@@ -76,35 +65,26 @@ def decrypt_file(input_path: str, output_path: str):
         print(f"❌ Error: File '{input_path}' not found")
         return False
 
-    with input_file.open("rb") as f:
-        # Read handshake message 1
-        msg1_len = int.from_bytes(f.read(4), "big")
-        msg1 = f.read(msg1_len)
-
-        # Read handshake message 2
-        msg2_len = int.from_bytes(f.read(4), "big")
-        msg2 = f.read(msg2_len)
-
-        # Read ciphertext
-        ciphertext = f.read()
-
+    ciphertext = input_file.read_bytes()
     print(f"   Read {len(ciphertext)} encrypted bytes")
 
-    # Setup handshake
-    decryptor = NoiseHandshake("Noise_NN_25519_ChaChaPoly_SHA256")
-    decryptor.set_as_responder()
-    decryptor.start()
-
-    # Replay handshake
-    decryptor.read_message(msg1)
-    decryptor.write_message(b"")  # Generate same msg2 (deterministic for NN)
-
-    # Convert to transport
-    dec_transport = decryptor.to_transport()
+    # Recreate cipher from same password
+    from noiseframework.noise.state import CipherState
+    from noiseframework.crypto.cipher import ChaChaPoly
+    from noiseframework.crypto.hash import SHA256
+    
+    # Derive key from password
+    hasher = SHA256()
+    key = hasher.hash(password.encode())
+    
+    # Create cipher state
+    cipher_func = ChaChaPoly()
+    cipher_state = CipherState(cipher_func)
+    cipher_state.initialize_key(key)
 
     # Decrypt
     try:
-        plaintext = dec_transport.receive(ciphertext)
+        plaintext = cipher_state.decrypt_with_ad(b"", ciphertext)
         print(f"   Decrypted to {len(plaintext)} bytes")
 
         # Save decrypted data
@@ -174,9 +154,12 @@ def run_example():
     print("✅ Example completed successfully!")
     print("=" * 60)
     print()
-    print("⚠️  Note: This example uses the NN pattern which provides")
-    print("    NO authentication. For production, use authenticated")
-    print("    patterns like XX, IK, or XK.")
+    print("⚠️  Note: This example uses a simple password-to-key approach")
+    print("    for demonstration. In production:")
+    print("    • Use proper key derivation (PBKDF2, Argon2, etc.)")
+    print("    • Add salt to prevent rainbow table attacks")
+    print("    • Use unique nonces for each encryption")
+    print("    • Consider using full Noise handshake for key exchange")
 
 
 if __name__ == "__main__":

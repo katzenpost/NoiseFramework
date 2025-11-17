@@ -105,7 +105,12 @@ Set the static (long-term) key pair for this handshake.
 
 **Example:**
 ```python
-private_key, public_key = handshake.generate_keypair()
+# Generate and set in one step
+handshake.generate_static_keypair()
+
+# Or set explicitly
+private_key = b'\x00' * 32  # Your key material
+public_key = b'\x00' * 32
 handshake.set_static_keypair(private_key, public_key)
 ```
 
@@ -146,23 +151,23 @@ Set the remote peer's known static public key (for patterns like IK, IKpsk).
 handshake.set_remote_static_public_key(server_public_key)
 ```
 
-##### `start(prologue)`
+##### `initialize()`
 
 ```python
-start(prologue: bytes = b"") -> None
+initialize() -> None
 ```
 
-Initialize handshake state and begin the protocol.
-
-**Parameters:**
-- `prologue` (bytes, optional): Pre-handshake data to mix into transcript. Default: `b""`
+Initialize the handshake state and begin the protocol.
 
 **Raises:**
 - `ValueError`: If role is not set
+- `ValueError`: If required keys are missing for the pattern
+
+**Note:** The protocol name from the pattern string is automatically used as the prologue.
 
 **Example:**
 ```python
-handshake.start(prologue=b"MyApp v1.0")
+handshake.initialize()
 ```
 
 ##### `write_message(payload)`
@@ -216,37 +221,50 @@ Read and process a handshake message from the peer.
 payload = responder.read_message(msg1)
 ```
 
-##### `generate_keypair()`
+##### `generate_static_keypair()`
 
 ```python
-generate_keypair() -> tuple[bytes, bytes]
+generate_static_keypair() -> None
 ```
 
-Generate a new key pair using the configured DH function.
+Generate a new static key pair using the configured DH function and set it automatically.
 
-**Returns:**
-- `tuple[bytes, bytes]`: (private_key, public_key)
+**Note:** This method generates and internally sets the static keypair. Keys are not returned.
 
 **Example:**
 ```python
-private, public = handshake.generate_keypair()
+handshake.generate_static_keypair()
+# Keys are now set internally and ready to use
 ```
 
 ##### `to_transport()`
 
 ```python
-to_transport() -> NoiseTransport
+to_transport() -> Tuple[CipherState, CipherState]
 ```
 
 Convert completed handshake to transport mode for ongoing communication.
 
 **Returns:**
-- `NoiseTransport`: Transport layer instance
+- `Tuple[CipherState, CipherState]`: (send_cipher, receive_cipher)
+  - Initiator: sends with first cipher, receives with second
+  - Responder: sends with second cipher, receives with first
 
 **Raises:**
 - `ValueError`: If handshake is not complete
 
 **Example:**
+```python
+send_cipher, receive_cipher = handshake.to_transport()
+
+# Send encrypted message
+ciphertext = send_cipher.encrypt_with_ad(b"", plaintext)
+
+# Receive encrypted message
+plaintext = receive_cipher.decrypt_with_ad(b"", ciphertext)
+```
+
+**Old Example (for reference):**
 ```python
 if handshake.handshake_finished:
     transport = handshake.to_transport()
