@@ -146,9 +146,9 @@ Initialize the handshake state and begin the protocol.
 - `ValueError`: If role is not set
 - `ValueError`: If required keys are missing for the pattern
 
-**Note:** The protocol name from the pattern string is automatically used as the prologue.
+**Note:** The protocol name from the pattern string is automatically used to initialize the handshake hash.
 
-**Example:**
+**Example:
 ```python
 handshake.initialize()
 ```
@@ -457,13 +457,13 @@ Get a DH function instance by name.
 ##### `generate_keypair()`
 
 ```python
-generate_keypair() -> tuple[bytes, bytes]
+generate_keypair() -> Tuple[bytes, bytes]
 ```
 
 Generate a new key pair.
 
 **Returns:**
-- `tuple[bytes, bytes]`: (private_key, public_key)
+- `Tuple[bytes, bytes]`: (private_key, public_key)
 
 ##### `dh(private_key, public_key)`
 
@@ -840,7 +840,7 @@ def setup_client(pattern: str) -> NoiseHandshake:
 
 ## Security Notes
 
-1. **Never reuse static keys across different protocols** without changing the prologue
+1. **Never reuse static keys across different protocols** without re-initialization
 2. **Validate peer identity** after handshake completion (application's responsibility)
 3. **Use strong random number generation** (handled automatically by `cryptography` library)
 4. **Protect private keys** in memory and storage

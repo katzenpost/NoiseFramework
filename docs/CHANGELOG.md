@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API.md: Fixed XX Pattern complete example - corrected `generate_keypair()` to `generate_static_keypair()`, `start()` to `initialize()`, and `to_transport()` usage
 - API.md: Fixed IK Pattern complete example - corrected all method calls and property access
 - API.md: Fixed Type Hints example - corrected `generate_keypair()` to `generate_static_keypair()`
+- API.md: Fixed type hint inconsistency - changed `tuple[bytes, bytes]` to `Tuple[bytes, bytes]` for Python 3.8+ compatibility
+- API.md: Clarified that protocol name initializes handshake hash (not a prologue parameter)
+- API.md: Removed incorrect prologue reference from security notes
+- FAQ.md: Fixed incorrect `start(prologue=...)` example to use correct API
+- examples/README.md: Fixed IK pattern example - corrected `generate_keypair()` to `generate_static_keypair()` with property access
+- examples/README.md: Removed incorrect prologue section (not supported in implementation)
+- examples/README.md: Fixed error handling example - corrected `start()` to `initialize()` and `to_transport()` usage
 
 ## [1.1.0] - 2025-11-16
 

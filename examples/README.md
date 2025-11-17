@@ -144,25 +144,16 @@ After exploring these examples:
 # Server publishes its public key
 server = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
 server.set_as_responder()
-server_priv, server_pub = server.generate_keypair()
+server.generate_static_keypair()
+server_priv = server.static_private
+server_pub = server.static_public
 # ... publish server_pub ...
 
 # Client uses known server key
 client = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
 client.set_as_initiator()
-client_priv, client_pub = client.generate_keypair()
-client.set_static_keypair(client_priv, client_pub)
+client.generate_static_keypair()
 client.set_remote_static_public_key(server_pub)  # Known key!
-```
-
-### With Prologue (Application Context)
-
-```python
-# Both parties use same prologue
-prologue = b"MyApp v2.0"
-client.start(prologue=prologue)
-server.start(prologue=prologue)
-# Different prologues will cause handshake failure
 ```
 
 ### Error Handling
@@ -171,9 +162,10 @@ server.start(prologue=prologue)
 try:
     handshake = NoiseHandshake(pattern_string)
     handshake.set_as_initiator()
-    handshake.start()
+    handshake.generate_static_keypair()
+    handshake.initialize()
     # ... perform handshake ...
-    transport = handshake.to_transport()
+    send_cipher, recv_cipher = handshake.to_transport()
 except ValueError as e:
     print(f"Handshake failed: {e}")
     # Handle invalid pattern, auth failure, etc.
@@ -183,10 +175,9 @@ except ValueError as e:
 
 1. **Always use authenticated patterns** in production (XX, IK, XK, etc.)
 2. **Validate peer identity** after handshake using static public keys
-3. **Use prologues** to bind handshakes to application context
-4. **Handle nonce overflow** (after 2^64 messages, rekey)
-5. **Protect private keys** in memory and storage
-6. **Test error paths** (tampering, wrong keys, replay attacks)
+3. **Handle nonce overflow** (after 2^64 messages, create new handshake)
+4. **Protect private keys** in memory and storage
+5. **Test error paths** (tampering, wrong keys, replay attacks)
 
 ## Resources
 

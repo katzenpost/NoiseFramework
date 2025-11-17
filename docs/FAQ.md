@@ -408,11 +408,11 @@ handshake.start()  # Must call before write_message/read_message
    # Don't do: transport.receive(ct2), transport.receive(ct1)
    ```
 
-3. **Handshake mismatch:** Different patterns or prologues
+3. **Handshake mismatch:** Different patterns
    ```python
-   # Both must use same prologue
-   client.start(prologue=b"v1")
-   server.start(prologue=b"v1")  # Must match!
+   # Both must use same pattern
+   client = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+   server = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")  # Must match!
    ```
 
 4. **Key mismatch:** Different handshake resulted in different keys
