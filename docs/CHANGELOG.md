@@ -13,9 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README.md: Corrected error handling example to use "Role not set" error (actual implementation behavior)
 - README.md: Fixed IK pattern example - corrected `get_static_private_key()`/`get_static_public_key()` to direct property access (`static_private`/`static_public`)
 - README.md: Fixed `set_remote_static_pubkey()` to `set_remote_static_public_key()`
-- README.md: Fixed `set_static_keypair()` call to include both private and public key parameters
+- README.md: Fixed `set_static_keypair()` calls to include both private and public key parameters (2 occurrences)
+- README.md: Fixed CLI example import from `py_noise` to `noiseframework`
 - API.md: Removed non-existent `set_ephemeral_keypair()` method documentation
 - API.md: Fixed property name from `handshake_finished` to `handshake_complete` (3 occurrences)
+- API.md: Removed non-existent `set_nonce()` method from CipherState documentation
+- API.md: Fixed XX Pattern complete example - corrected `generate_keypair()` to `generate_static_keypair()`, `start()` to `initialize()`, and `to_transport()` usage
+- API.md: Fixed IK Pattern complete example - corrected all method calls and property access
+- API.md: Fixed Type Hints example - corrected `generate_keypair()` to `generate_static_keypair()`
 
 ## [1.1.0] - 2025-11-16
 

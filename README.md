@@ -391,7 +391,7 @@ Generated keypair:
 **Usage in Python:**
 ```python
 from pathlib import Path
-from py_noise import NoiseHandshake
+from noiseframework import NoiseHandshake
 
 # Load generated keys
 private_key = Path("mykey_private.key").read_bytes()
@@ -399,7 +399,7 @@ public_key = Path("mykey_public.key").read_bytes()
 
 # Use in handshake
 hs = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
-hs.set_static_keypair(private_key)
+hs.set_static_keypair(private_key, public_key)
 ```
 
 ### Validate Pattern

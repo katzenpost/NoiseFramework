@@ -693,7 +693,6 @@ CipherState(cipher_fn: CipherFunction) -> CipherState
 
 - `initialize_key(key)`: Set encryption key
 - `has_key()`: Check if key is set
-- `set_nonce(nonce)`: Set nonce value
 - `encrypt_with_ad(ad, plaintext)`: Encrypt with AD
 - `decrypt_with_ad(ad, ciphertext)`: Decrypt with AD
 
@@ -705,21 +704,20 @@ CipherState(cipher_fn: CipherFunction) -> CipherState
 
 ```python
 from noiseframework import NoiseHandshake
+from noiseframework.transport.transport import NoiseTransport
 
 # === Setup ===
 # Initiator (client)
 initiator = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
 initiator.set_as_initiator()
-i_static_priv, i_static_pub = initiator.generate_keypair()
-initiator.set_static_keypair(i_static_priv, i_static_pub)
-initiator.start()
+initiator.generate_static_keypair()
+initiator.initialize()
 
 # Responder (server)
 responder = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
 responder.set_as_responder()
-r_static_priv, r_static_pub = responder.generate_keypair()
-responder.set_static_keypair(r_static_priv, r_static_pub)
-responder.start()
+responder.generate_static_keypair()
+responder.initialize()
 
 # === Handshake ===
 # -> e
@@ -735,8 +733,11 @@ msg3 = initiator.write_message(b"")
 responder.read_message(msg3)
 
 # === Transport ===
-i_transport = initiator.to_transport()
-r_transport = responder.to_transport()
+i_send, i_recv = initiator.to_transport()
+r_send, r_recv = responder.to_transport()
+
+i_transport = NoiseTransport(i_send, i_recv)
+r_transport = NoiseTransport(r_send, r_recv)
 
 # Send encrypted messages
 ciphertext = i_transport.send(b"Hello, server!")
@@ -748,24 +749,28 @@ assert plaintext == b"Hello, server!"
 
 ```python
 from noiseframework import NoiseHandshake
+from noiseframework.transport.transport import NoiseTransport
 
 # === Setup ===
 # Generate server's static keypair (done once, published)
-server = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
-s_priv, s_pub = server.generate_keypair()
+server_setup = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
+server_setup.set_as_responder()
+server_setup.generate_static_keypair()
+s_priv = server_setup.static_private
+s_pub = server_setup.static_public
 
 # Client knows server's public key
 client = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
 client.set_as_initiator()
-c_priv, c_pub = client.generate_keypair()
-client.set_static_keypair(c_priv, c_pub)
+client.generate_static_keypair()
 client.set_remote_static_public_key(s_pub)  # Known server key
-client.start()
+client.initialize()
 
 # Server
+server = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
 server.set_as_responder()
 server.set_static_keypair(s_priv, s_pub)
-server.start()
+server.initialize()
 
 # === Handshake ===
 # -> e, es, s, ss
@@ -777,8 +782,11 @@ msg2 = server.write_message(b"")
 client.read_message(msg2)
 
 # === Transport ===
-c_transport = client.to_transport()
-s_transport = server.to_transport()
+c_send, c_recv = client.to_transport()
+s_send, s_recv = server.to_transport()
+
+c_transport = NoiseTransport(c_send, c_recv)
+s_transport = NoiseTransport(s_send, s_recv)
 ```
 
 ---
@@ -813,10 +821,8 @@ from noiseframework.transport import NoiseTransport
 def setup_client(pattern: str) -> NoiseHandshake:
     handshake: NoiseHandshake = NoiseHandshake(pattern)
     handshake.set_as_initiator()
-    priv: bytes
-    pub: bytes
-    priv, pub = handshake.generate_keypair()
-    handshake.set_static_keypair(priv, pub)
+    handshake.generate_static_keypair()
+    handshake.initialize()
     return handshake
 ```
 
