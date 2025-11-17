@@ -603,7 +603,7 @@ pip install -e ".[dev]"
 pytest
 
 # Run with coverage
-pytest --cov=py_noise --cov-report=html
+pytest --cov=noiseframework --cov-report=html
 
 # Run specific test file
 pytest tests/test_handshake.py

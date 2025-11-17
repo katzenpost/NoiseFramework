@@ -81,7 +81,7 @@ The implementation strictly follows the [Noise Protocol Framework specification]
 
 ## Component Architecture
 
-### High-Level API (`py_noise/__init__.py`, `py_noise/noise/handshake.py`)
+### High-Level API (`noiseframework/__init__.py`, `noiseframework/noise/handshake.py`)
 
 **Purpose:** User-facing interfaces for performing handshakes and encrypted communication.
 
@@ -105,7 +105,7 @@ class NoiseHandshake:
     # ... keys and state
 ```
 
-#### `NoiseTransport` (`py_noise/transport/transport.py`)
+#### `NoiseTransport` (`noiseframework/transport/transport.py`)
 - **Responsibility:** Post-handshake encrypted communication
 - **State:** Two CipherState instances (send/receive)
 - **Methods:** `send()`, `receive()`
@@ -115,7 +115,7 @@ class NoiseHandshake:
 
 ### Protocol Layer
 
-#### Pattern Parser (`py_noise/noise/pattern.py`)
+#### Pattern Parser (`noiseframework/noise/pattern.py`)
 
 **Purpose:** Parse and validate Noise pattern strings.
 
@@ -151,7 +151,7 @@ HANDSHAKE_PATTERNS = {
 }
 ```
 
-#### SymmetricState (`py_noise/noise/state.py`)
+#### SymmetricState (`noiseframework/noise/state.py`)
 
 **Purpose:** Manage handshake cryptographic state per Noise spec.
 
@@ -179,7 +179,7 @@ class SymmetricState:
         # ... return initialized CipherStates
 ```
 
-#### CipherState (`py_noise/noise/state.py`)
+#### CipherState (`noiseframework/noise/state.py`)
 
 **Purpose:** Manage AEAD encryption with automatic nonce handling.
 
@@ -207,7 +207,7 @@ class CipherState:
 
 All cryptographic operations are delegated to the `cryptography` library.
 
-#### DH Functions (`py_noise/crypto/dh.py`)
+#### DH Functions (`noiseframework/crypto/dh.py`)
 
 **Interface:**
 
@@ -227,7 +227,7 @@ class DHFunction:
 - `Curve25519`: X25519, 32-byte keys
 - `Curve448`: X448, 56-byte keys
 
-#### Cipher Functions (`py_noise/crypto/cipher.py`)
+#### Cipher Functions (`noiseframework/crypto/cipher.py`)
 
 **Interface:**
 
@@ -252,7 +252,7 @@ class CipherFunction:
 nonce_bytes = nonce.to_bytes(8, "little") + b"\x00\x00\x00\x00"
 ```
 
-#### Hash Functions (`py_noise/crypto/hash.py`)
+#### Hash Functions (`noiseframework/crypto/hash.py`)
 
 **Interface:**
 

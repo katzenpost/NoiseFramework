@@ -60,17 +60,17 @@ Enhancement suggestions are welcome! Please:
 
 6. **Format your code**:
    ```bash
-   black py_noise/ tests/
+   black noiseframework/ tests/
    ```
 
 7. **Run type checking**:
    ```bash
-   mypy py_noise/
+   mypy noiseframework/
    ```
 
 8. **Run linting**:
    ```bash
-   ruff check py_noise/ tests/
+   ruff check noiseframework/ tests/
    ```
 
 9. **Update documentation**:
@@ -192,7 +192,7 @@ This is a cryptographic library. Extra care required:
 ## Project Structure
 
 ```
-py_noise/
+noiseframework/
 ├── crypto/          # Cryptographic primitives
 │   ├── dh.py       # Diffie-Hellman
 │   ├── cipher.py   # AEAD ciphers

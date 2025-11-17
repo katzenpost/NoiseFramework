@@ -22,11 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - README.md: Corrected all import statements from `py_noise` to `noiseframework` (Quick Start, all pattern examples, performance section)
 - README.md: Fixed Architecture section to show correct package structure (`noiseframework/` instead of `py_noise/`)
+- README.md: Fixed test coverage command from `pytest --cov=py_noise` to `pytest --cov=noiseframework`
 - README.md: Added missing `b""` parameter to all `write_message()` calls for consistency
 - API.md: Fixed malformed code block (missing closing triple backticks after `initialize()` example)
 - API.md: Removed version-specific reference ("v1.1.0") in favor of generic version documentation
 - API.md: Updated all examples to use cleaner imports with `NoiseTransport`
 - API.md: Updated `write_message()` example to show default empty bytes parameter
+- ARCHITECTURE.md: Updated all file path references from `py_noise/` to `noiseframework/` (8 occurrences)
+- CONTRIBUTING.md: Updated all command examples from `py_noise/` to `noiseframework/` in formatting, type checking, and linting commands
+- CONTRIBUTING.md: Updated project structure diagram from `py_noise/` to `noiseframework/`
 - examples/basic_client_server.py: Now uses `NoiseTransport` wrapper instead of directly calling cipher state methods
 - examples/simple_chat.py: Refactored to use `NoiseTransport` wrapper and simplified from separate cipher states to single transport instance
 
