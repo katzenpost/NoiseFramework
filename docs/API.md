@@ -114,23 +114,6 @@ public_key = b'\x00' * 32
 handshake.set_static_keypair(private_key, public_key)
 ```
 
-##### `set_ephemeral_keypair(private_key, public_key)`
-
-```python
-set_ephemeral_keypair(private_key: bytes, public_key: bytes) -> None
-```
-
-Set the ephemeral (session) key pair for this handshake.
-
-**Parameters:**
-- `private_key` (bytes): Private key
-- `public_key` (bytes): Public key
-
-**Raises:**
-- `ValueError`: If key sizes are incorrect
-
-**Note:** Usually not needed as ephemeral keys are generated automatically.
-
 ##### `set_remote_static_public_key(public_key)`
 
 ```python
@@ -264,25 +247,19 @@ ciphertext = send_cipher.encrypt_with_ad(b"", plaintext)
 plaintext = receive_cipher.decrypt_with_ad(b"", ciphertext)
 ```
 
-**Old Example (for reference):**
-```python
-if handshake.handshake_finished:
-    transport = handshake.to_transport()
-```
-
 #### Properties
 
-##### `handshake_finished`
+##### `handshake_complete`
 
 ```python
-handshake_finished: bool
+handshake_complete: bool
 ```
 
 Whether the handshake has completed successfully.
 
 **Example:**
 ```python
-if handshake.handshake_finished:
+if handshake.handshake_complete:
     print("Handshake complete!")
 ```
 

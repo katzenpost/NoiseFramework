@@ -26,7 +26,6 @@
   - [Pre-Shared Key Pattern (Noise_IK)](#pre-shared-key-pattern-noise_ik)
   - [Transport Layer Encryption](#transport-layer-encryption)
   - [Error Handling](#error-handling)
-- [Complete API Reference](docs/API.md)
 - [CLI Documentation](#-cli-documentation)
   - [Generate Keypair](#generate-keypair)
   - [Validate Pattern](#validate-pattern)
@@ -85,8 +84,8 @@ pip install -e .
 ### Python API
 
 ```python
-from noiseframework import NoiseHandshake
-from noiseframework.transport.transport import NoiseTransport
+from py_noise import NoiseHandshake
+from py_noise.transport.transport import NoiseTransport
 
 # === INITIATOR SIDE ===
 initiator = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
@@ -254,14 +253,14 @@ from noiseframework.transport.transport import NoiseTransport
 responder_setup = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
 responder_setup.set_as_responder()
 responder_setup.generate_static_keypair()
-responder_private = responder_setup.get_static_private_key()
-responder_public = responder_setup.get_static_public_key()
+responder_private = responder_setup.static_private
+responder_public = responder_setup.static_public
 
 # === INITIATOR SIDE ===
 initiator = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
 initiator.set_as_initiator()
 initiator.generate_static_keypair()  # Generate own static key
-initiator.set_remote_static_pubkey(responder_public)  # Know responder's key
+initiator.set_remote_static_public_key(responder_public)  # Know responder's key
 initiator.initialize()
 
 # Send first message (-> e, es, s, ss)
@@ -270,7 +269,7 @@ msg1 = initiator.write_message()
 # === RESPONDER SIDE ===
 responder = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
 responder.set_as_responder()
-responder.set_static_keypair(responder_private)  # Use existing keypair
+responder.set_static_keypair(responder_private, responder_public)  # Use existing keypair
 responder.initialize()
 
 # Process first message and send response (-> e, ee, se)
@@ -340,8 +339,8 @@ except ValueError as e:
 try:
     # Attempt operation in wrong state
     hs = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
-    hs.set_as_initiator()
-    hs.write_message()  # Error: not initialized
+    # Not setting role - will fail
+    hs.write_message()  # Error: role not set
 except ValueError as e:
     print(f"State error: {e}")
 
@@ -353,7 +352,7 @@ except ValueError as e:
     print(f"Authentication failed: {e}")
 
 # Always check handshake completion
-if initiator.is_handshake_complete():
+if initiator.handshake_complete:
     send_cipher, recv_cipher = initiator.to_transport()
 else:
     print("Handshake not complete")
@@ -392,7 +391,7 @@ Generated keypair:
 **Usage in Python:**
 ```python
 from pathlib import Path
-from noiseframework import NoiseHandshake
+from py_noise import NoiseHandshake
 
 # Load generated keys
 private_key = Path("mykey_private.key").read_bytes()
@@ -578,7 +577,7 @@ NoiseFramework is designed for correctness and security first, with reasonable p
 **Benchmarking:**
 ```python
 import time
-from noiseframework import NoiseHandshake
+from py_noise import NoiseHandshake
 
 # Benchmark handshake
 start = time.perf_counter()
@@ -633,7 +632,7 @@ Contributions are welcome! Please follow these guidelines:
 5. **Run the test suite**: Ensure all tests pass
 6. **Submit a pull request**: Describe your changes clearly
 
-See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ### Development Setup
 
