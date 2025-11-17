@@ -7,27 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Exported `NoiseTransport` from main `noiseframework` package for cleaner imports
+- Exported `NoiseTransport` from `noiseframework.transport` module
+- Support for three import styles: `from noiseframework import NoiseTransport`, `from noiseframework.transport import NoiseTransport`, or `from noiseframework.transport.transport import NoiseTransport`
+
+### Changed
+- Updated all code examples in README.md to use cleaner imports (`from noiseframework import NoiseHandshake, NoiseTransport`)
+- Updated all code examples in API.md to use cleaner imports
+- Improved examples/basic_client_server.py to use `NoiseTransport` wrapper class instead of raw cipher states
+- Improved examples/simple_chat.py to use `NoiseTransport` wrapper class and simplified internal state management
+- Updated all documentation examples to explicitly pass `b""` to `write_message()` where appropriate for clarity
+
 ### Fixed
-- README.md: Corrected all import statements from `py_noise` to `noiseframework`
-- README.md: Fixed `is_handshake_complete()` method call to `handshake_complete` property access
-- README.md: Corrected error handling example to use "Role not set" error (actual implementation behavior)
-- README.md: Fixed IK pattern example - corrected `get_static_private_key()`/`get_static_public_key()` to direct property access (`static_private`/`static_public`)
-- README.md: Fixed `set_remote_static_pubkey()` to `set_remote_static_public_key()`
-- README.md: Fixed `set_static_keypair()` calls to include both private and public key parameters (2 occurrences)
-- README.md: Fixed CLI example import from `py_noise` to `noiseframework`
-- API.md: Removed non-existent `set_ephemeral_keypair()` method documentation
-- API.md: Fixed property name from `handshake_finished` to `handshake_complete` (3 occurrences)
-- API.md: Removed non-existent `set_nonce()` method from CipherState documentation
-- API.md: Fixed XX Pattern complete example - corrected `generate_keypair()` to `generate_static_keypair()`, `start()` to `initialize()`, and `to_transport()` usage
-- API.md: Fixed IK Pattern complete example - corrected all method calls and property access
-- API.md: Fixed Type Hints example - corrected `generate_keypair()` to `generate_static_keypair()`
-- API.md: Fixed type hint inconsistency - changed `tuple[bytes, bytes]` to `Tuple[bytes, bytes]` for Python 3.8+ compatibility
-- API.md: Clarified that protocol name initializes handshake hash (not a prologue parameter)
-- API.md: Removed incorrect prologue reference from security notes
-- FAQ.md: Fixed incorrect `start(prologue=...)` example to use correct API
-- examples/README.md: Fixed IK pattern example - corrected `generate_keypair()` to `generate_static_keypair()` with property access
-- examples/README.md: Removed incorrect prologue section (not supported in implementation)
-- examples/README.md: Fixed error handling example - corrected `start()` to `initialize()` and `to_transport()` usage
+- README.md: Corrected all import statements from `py_noise` to `noiseframework` (Quick Start, all pattern examples, performance section)
+- README.md: Fixed Architecture section to show correct package structure (`noiseframework/` instead of `py_noise/`)
+- README.md: Added missing `b""` parameter to all `write_message()` calls for consistency
+- API.md: Fixed malformed code block (missing closing triple backticks after `initialize()` example)
+- API.md: Removed version-specific reference ("v1.1.0") in favor of generic version documentation
+- API.md: Updated all examples to use cleaner imports with `NoiseTransport`
+- API.md: Updated `write_message()` example to show default empty bytes parameter
+- examples/basic_client_server.py: Now uses `NoiseTransport` wrapper instead of directly calling cipher state methods
+- examples/simple_chat.py: Refactored to use `NoiseTransport` wrapper and simplified from separate cipher states to single transport instance
 
 ## [1.1.0] - 2025-11-16
 

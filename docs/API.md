@@ -148,7 +148,7 @@ Initialize the handshake state and begin the protocol.
 
 **Note:** The protocol name from the pattern string is automatically used to initialize the handshake hash.
 
-**Example:
+**Example:**
 ```python
 handshake.initialize()
 ```
@@ -174,7 +174,7 @@ Write the next handshake message.
 **Example:**
 ```python
 # First message (usually no payload)
-msg1 = initiator.write_message(b"")
+msg1 = initiator.write_message()
 
 # Later message with payload
 msg2 = initiator.write_message(b"Hello")
@@ -280,7 +280,11 @@ Transport layer for encrypted communication after handshake completion.
 #### Import
 
 ```python
+from noiseframework import NoiseTransport
+# OR
 from noiseframework.transport import NoiseTransport
+# OR (explicit)
+from noiseframework.transport.transport import NoiseTransport
 ```
 
 #### Constructor
@@ -703,8 +707,7 @@ CipherState(cipher_fn: CipherFunction) -> CipherState
 ### XX Pattern (Mutual Authentication)
 
 ```python
-from noiseframework import NoiseHandshake
-from noiseframework.transport.transport import NoiseTransport
+from noiseframework import NoiseHandshake, NoiseTransport
 
 # === Setup ===
 # Initiator (client)
@@ -748,8 +751,7 @@ assert plaintext == b"Hello, server!"
 ### IK Pattern (Known Responder)
 
 ```python
-from noiseframework import NoiseHandshake
-from noiseframework.transport.transport import NoiseTransport
+from noiseframework import NoiseHandshake, NoiseTransport
 
 # === Setup ===
 # Generate server's static keypair (done once, published)
@@ -815,8 +817,7 @@ NoiseFramework uses comprehensive type hints:
 
 ```python
 from typing import Optional, Tuple
-from noiseframework import NoiseHandshake
-from noiseframework.transport import NoiseTransport
+from noiseframework import NoiseHandshake, NoiseTransport
 
 def setup_client(pattern: str) -> NoiseHandshake:
     handshake: NoiseHandshake = NoiseHandshake(pattern)
@@ -851,7 +852,6 @@ def setup_client(pattern: str) -> NoiseHandshake:
 
 ## Version
 
-The documentation mentioned above is up-to-date for **NoiseFramework v1.1.0**.
-> Newer versions, might not have the updated documentation yet.
+This API documentation is maintained for the current version of NoiseFramework.
 
-For the latest updates, see the [CHANGELOG](CHANGELOG.md).
+For version-specific changes and updates, see the [CHANGELOG](CHANGELOG.md).

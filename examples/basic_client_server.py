@@ -10,7 +10,7 @@ The XX pattern provides mutual authentication where both parties exchange
 their static public keys during the handshake.
 """
 
-from noiseframework import NoiseHandshake
+from noiseframework import NoiseHandshake, NoiseTransport
 
 
 def run_example():
@@ -84,6 +84,10 @@ def run_example():
     print("🔒 Converting to transport mode...")
     client_send, client_recv = client.to_transport()
     server_send, server_recv = server.to_transport()
+    
+    # Create transport wrappers
+    client_transport = NoiseTransport(client_send, client_recv)
+    server_transport = NoiseTransport(server_send, server_recv)
     print("   ✓ Transport mode active\n")
 
     # === Encrypted Communication ===
@@ -92,9 +96,9 @@ def run_example():
     # Client -> Server
     message1 = b"Hello from client!"
     print(f"   Client: '{message1.decode()}'")
-    ciphertext1 = client_send.encrypt_with_ad(b"", message1)
+    ciphertext1 = client_transport.send(message1)
     print(f"          Encrypted: {ciphertext1.hex()[:40]}...")
-    received1 = server_recv.decrypt_with_ad(b"", ciphertext1)
+    received1 = server_transport.receive(ciphertext1)
     print(f"          Server received: '{received1.decode()}'")
     assert received1 == message1
 
@@ -103,9 +107,9 @@ def run_example():
     # Server -> Client
     message2 = b"Hello from server!"
     print(f"   Server: '{message2.decode()}'")
-    ciphertext2 = server_send.encrypt_with_ad(b"", message2)
+    ciphertext2 = server_transport.send(message2)
     print(f"          Encrypted: {ciphertext2.hex()[:40]}...")
-    received2 = client_recv.decrypt_with_ad(b"", ciphertext2)
+    received2 = client_transport.receive(ciphertext2)
     print(f"          Client received: '{received2.decode()}'")
     assert received2 == message2
 
@@ -115,8 +119,8 @@ def run_example():
     print("   📨 Sending multiple messages...")
     for i in range(3):
         msg = f"Message {i+1}".encode()
-        ct = client_send.encrypt_with_ad(b"", msg)
-        pt = server_recv.decrypt_with_ad(b"", ct)
+        ct = client_transport.send(msg)
+        pt = server_transport.receive(ct)
         print(f"      [{i+1}] Sent and received: '{pt.decode()}'")
         assert pt == msg
 

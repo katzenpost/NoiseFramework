@@ -11,8 +11,10 @@ __license__ = "MIT"
 
 # Public API exports
 from noiseframework.noise.handshake import NoiseHandshake
+from noiseframework.transport.transport import NoiseTransport
 
 __all__ = [
     "__version__",
     "NoiseHandshake",
+    "NoiseTransport",
 ]
