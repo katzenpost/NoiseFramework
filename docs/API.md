@@ -238,12 +238,25 @@ Convert completed handshake to transport mode for ongoing communication.
 
 **Example:**
 ```python
+from noiseframework import NoiseTransport
+
 send_cipher, receive_cipher = handshake.to_transport()
 
+# Create transport wrapper (recommended)
+transport = NoiseTransport(send_cipher, receive_cipher)
+
 # Send encrypted message
-ciphertext = send_cipher.encrypt_with_ad(b"", plaintext)
+ciphertext = transport.send(b"Hello, world!")
 
 # Receive encrypted message
+plaintext = transport.receive(ciphertext)
+```
+
+**Alternative (using raw cipher states):**
+```python
+# Direct cipher state usage (lower-level)
+send_cipher, receive_cipher = handshake.to_transport()
+ciphertext = send_cipher.encrypt_with_ad(b"", plaintext)
 plaintext = receive_cipher.decrypt_with_ad(b"", ciphertext)
 ```
 

@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API.md: Removed version-specific reference ("v1.1.0") in favor of generic version documentation
 - API.md: Updated all examples to use cleaner imports with `NoiseTransport`
 - API.md: Updated `write_message()` example to show default empty bytes parameter
+- API.md: Updated `to_transport()` example to demonstrate recommended `NoiseTransport` wrapper usage with alternative showing raw cipher state approach
 - ARCHITECTURE.md: Updated all file path references from `py_noise/` to `noiseframework/` (8 occurrences)
 - CONTRIBUTING.md: Updated all command examples from `py_noise/` to `noiseframework/` in formatting, type checking, and linting commands
 - CONTRIBUTING.md: Updated project structure diagram from `py_noise/` to `noiseframework/`
