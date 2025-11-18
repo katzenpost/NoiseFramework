@@ -5,6 +5,27 @@ All notable changes to NoiseFramework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-11-18
+
+### Added
+- `benchmark.py` script in repository root for comprehensive performance testing
+- `docs/BENCHMARKS.md` with real-world performance measurements and detailed analysis:
+  - Handshake performance across different patterns (XX, NN, IK) and cipher suites
+  - Transport encryption/decryption throughput for message sizes from 64 bytes to 64 KB
+  - Key generation performance for Curve25519 and Curve448
+  - Performance recommendations for different use cases (low-latency, high-throughput, embedded, maximum security)
+  - Optimization tips and best practices
+  - Comparison methodology and reproducibility instructions
+
+### Changed
+- Updated README.md performance section with actual benchmark results:
+  - Complete XX handshake: 558-642 µs (1,500-1,800 handshakes/sec)
+  - Transport encryption: 3+ GB/s for large messages, <3 µs latency for small messages
+  - Key generation: ~32,000 keypairs/sec for Curve25519
+  - Added quick benchmark results table
+  - Added instructions for running benchmarks yourself
+  - Added link to comprehensive BENCHMARKS.md documentation
+
 ## [1.2.0] - 2025-11-17
 
 ### Added

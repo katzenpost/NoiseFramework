@@ -568,25 +568,34 @@ NoiseFramework has comprehensive test coverage with 156 tests achieving 92% code
 
 ## ⚡ Performance
 
-NoiseFramework is designed for correctness and security first, with reasonable performance for most use cases:
+NoiseFramework delivers production-ready performance with real-world benchmarks:
 
-- **Handshake**: ~1-2ms for XX pattern on modern hardware
-- **Transport encryption**: ~100MB/s for large messages
-- **Memory**: Low memory footprint, suitable for embedded systems
+- **Handshakes**: ~1,500-1,800 complete handshakes/sec (XX pattern)
+- **Transport encryption**: **3+ GB/s** throughput for large messages
+- **Key generation**: ~32,000 keypairs/sec (Curve25519)
+- **Latency**: <3 µs per small message encryption
 
-**Benchmarking:**
-```python
-import time
-from noiseframework import NoiseHandshake
+### Quick Benchmark Results
 
-# Benchmark handshake
-start = time.perf_counter()
-for _ in range(1000):
-    hs = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
-    hs.set_as_initiator()
-    hs.initialize()
-end = time.perf_counter()
-print(f"Handshakes/sec: {1000 / (end - start):.0f}")
+| Operation | Performance |
+|-----------|-------------|
+| Complete XX handshake | 558-642 µs |
+| Encrypt 64 KB message | 18.5 µs (3.29 GB/s) |
+| Encrypt 1 KB message | 2.4 µs (403 MB/s) |
+| Generate Curve25519 keypair | 31 µs |
+
+**See [BENCHMARKS.md](docs/BENCHMARKS.md) for comprehensive performance analysis, methodology, and optimization tips.**
+
+### Run Benchmarks Yourself
+
+```bash
+# Activate virtual environment
+source .venv/bin/activate  # Linux/macOS
+# or
+.\.venv\Scripts\Activate.ps1  # Windows PowerShell
+
+# Run benchmark script
+python benchmark.py
 ```
 
 ---
