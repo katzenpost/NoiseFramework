@@ -632,7 +632,7 @@ Contributions are welcome! Please follow these guidelines:
 5. **Run the test suite**: Ensure all tests pass
 6. **Submit a pull request**: Describe your changes clearly
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
 
 ### Development Setup
 
