@@ -149,3 +149,5 @@ cython_debug/
 test_keys/
 *.enc
 *.dec
+
+docs/WEBSITE.md
