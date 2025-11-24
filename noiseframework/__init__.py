@@ -12,6 +12,7 @@ __license__ = "MIT"
 # Public API exports
 from noiseframework.noise.handshake import NoiseHandshake
 from noiseframework.transport.transport import NoiseTransport
+from noiseframework.connection import NoiseConnection, AsyncNoiseConnection
 from noiseframework.framing import (
     FramedReader,
     FramedWriter,
@@ -52,6 +53,8 @@ __all__ = [
     "__version__",
     "NoiseHandshake",
     "NoiseTransport",
+    "NoiseConnection",
+    "AsyncNoiseConnection",
     "FramedReader",
     "FramedWriter",
     "FramingError",
