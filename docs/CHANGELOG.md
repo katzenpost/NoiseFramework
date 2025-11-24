@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `async_support.py`: Async framing validation errors
 - All custom exceptions exported from main `noiseframework` package
 - `FramingError` now inherits from `NoiseError` for consistency
+- `examples/error_handling_example.py` with 9 comprehensive error handling examples (~380 lines)
+- `tests/test_exceptions.py` with 15 dedicated exception tests validating hierarchy, catching patterns, and exports
 - Async/await support for modern Python asyncio applications:
   - `AsyncNoiseHandshake` class wrapping `NoiseHandshake` with async methods
   - `AsyncNoiseTransport` class wrapping `NoiseTransport` for async encrypted communication

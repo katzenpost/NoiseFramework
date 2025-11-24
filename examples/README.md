@@ -99,6 +99,60 @@ python -m examples.simple_chat
    ...
 ```
 
+### 4. Error Handling (`error_handling_example.py`)
+
+**Demonstrates:**
+- Catching and handling custom exceptions
+- Specific error types (pattern, role, authentication)
+- Production error handling patterns
+- Actionable error messages
+
+**Exceptions Covered:**
+- `UnsupportedPatternError`, `UnsupportedPrimitiveError`
+- `RoleNotSetError`, `RoleAlreadySetError`
+- `MissingKeyError`, `WrongTurnError`
+- `HandshakeCompleteError`
+- `AuthenticationError`, `ValidationError`
+
+**Key Concepts:**
+- Exception hierarchy (`NoiseError` base class)
+- Catching specific vs. broad exceptions
+- Comprehensive try/except patterns
+- Error message interpretation
+
+**Output:**
+```
+=== Example 1: Pattern Validation ===
+[ERROR] Pattern error: Invalid pattern string format: 'Invalid_Pattern'.
+        Expected format: Noise_PATTERN_DH_CIPHER_HASH
+   -> Use format: Noise_PATTERN_DH_CIPHER_HASH
+   ...
+```
+
+### 5. Logging (`logging_example.py`)
+
+**Demonstrates:**
+- Configuring logging for NoiseFramework
+- Different log levels (DEBUG, INFO, WARNING, ERROR)
+- Custom loggers
+- Debugging handshake and transport operations
+
+### 6. Framing (`framed_tcp_example.py`)
+
+**Demonstrates:**
+- TCP socket communication with length-prefixed framing
+- Using `FramedReader` and `FramedWriter`
+- Handling partial reads automatically
+- Complete client/server with networking
+
+### 7. Async Support (`async_tcp_example.py`)
+
+**Demonstrates:**
+- Async/await patterns with NoiseFramework
+- Using `AsyncNoiseHandshake` and `AsyncNoiseTransport`
+- Async framing with `AsyncFramedReader`/`AsyncFramedWriter`
+- Non-blocking concurrent handshakes
+
 ## Next Steps
 
 After exploring these examples:
@@ -129,11 +183,13 @@ After exploring these examples:
 
 5. **Handle errors gracefully**:
    ```python
+   from noiseframework.exceptions import AuthenticationError
+   
    try:
        plaintext = transport.receive(ciphertext)
-   except ValueError as e:
+   except AuthenticationError as e:
        print(f"Authentication failed: {e}")
-       # Handle tampering or corruption
+       # Handle tampering or corruption - DO NOT process message
    ```
 
 ## Common Patterns
@@ -159,6 +215,13 @@ client.set_remote_static_public_key(server_pub)  # Known key!
 ### Error Handling
 
 ```python
+from noiseframework.exceptions import (
+    UnsupportedPatternError,
+    RoleNotSetError,
+    AuthenticationError,
+    NoiseError,
+)
+
 try:
     handshake = NoiseHandshake(pattern_string)
     handshake.set_as_initiator()
@@ -166,10 +229,15 @@ try:
     handshake.initialize()
     # ... perform handshake ...
     send_cipher, recv_cipher = handshake.to_transport()
-except ValueError as e:
-    print(f"Handshake failed: {e}")
-    # Handle invalid pattern, auth failure, etc.
+except UnsupportedPatternError as e:
+    print(f"Invalid pattern: {e}")
+except AuthenticationError as e:
+    print(f"Authentication failed: {e}")
+except NoiseError as e:
+    print(f"Handshake error: {e}")
 ```
+
+**See `error_handling_example.py` for comprehensive error handling patterns.**
 
 ## Tips
 

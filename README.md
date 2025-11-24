@@ -331,36 +331,52 @@ print(f"Messages received: {transport.get_receive_nonce()}")
 
 ### Error Handling
 
+NoiseFramework provides helpful custom exceptions with actionable error messages:
+
 ```python
-from noiseframework import NoiseHandshake
+from noiseframework import NoiseHandshake, NoiseTransport
+from noiseframework.exceptions import (
+    NoiseError,                  # Base class - catches all framework errors
+    UnsupportedPatternError,     # Invalid pattern
+    RoleNotSetError,             # Role not set
+    AuthenticationError,         # Decryption/authentication failure
+)
 
+# Catch specific exceptions
 try:
-    # Invalid pattern string
     hs = NoiseHandshake("Invalid_Pattern")
-except ValueError as e:
+except UnsupportedPatternError as e:
     print(f"Pattern error: {e}")
+    # Output: Invalid pattern string format: 'Invalid_Pattern'.
+    #         Expected format: Noise_PATTERN_DH_CIPHER_HASH
 
+# Handle state errors
 try:
-    # Attempt operation in wrong state
     hs = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
-    # Not setting role - will fail
     hs.write_message()  # Error: role not set
-except ValueError as e:
+except RoleNotSetError as e:
     print(f"State error: {e}")
+    # Output: Cannot write handshake message: role not set.
+    #         Call set_as_initiator() or set_as_responder() first.
 
+# Handle authentication failures
 try:
-    # Authentication failure
     ciphertext_tampered = ciphertext[:-1] + b"\x00"
     transport.receive(ciphertext_tampered)
-except ValueError as e:
+except AuthenticationError as e:
     print(f"Authentication failed: {e}")
+    # DO NOT process the message - discard it
 
-# Always check handshake completion
-if initiator.handshake_complete:
-    send_cipher, recv_cipher = initiator.to_transport()
-else:
-    print("Handshake not complete")
+# Catch all framework errors
+try:
+    # ... noise operations ...
+except NoiseError as e:
+    print(f"Framework error: {type(e).__name__}: {e}")
 ```
+
+**Available exceptions**: `NoiseError` (base), `HandshakeError`, `RoleNotSetError`, `RoleAlreadySetError`, `WrongTurnError`, `HandshakeCompleteError`, `MissingKeyError`, `PatternError`, `UnsupportedPatternError`, `UnsupportedPrimitiveError`, `StateError`, `NoKeySetError`, `NonceOverflowError`, `InvalidKeySizeError`, `TransportError`, `AuthenticationError`, `CryptoError`, `ValidationError`, `FramingError`.
+
+See `examples/error_handling_example.py` for comprehensive error handling examples.
 
 ---
 

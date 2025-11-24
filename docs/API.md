@@ -64,7 +64,8 @@ Initialize a Noise handshake with a pattern string.
 - `logger` (Optional[logging.Logger]): Custom logger instance for handshake operations. If None, creates a default logger with name `noiseframework.noise.handshake.NoiseHandshake`.
 
 **Raises:**
-- `ValueError`: If pattern string is invalid or uses unsupported algorithms
+- `UnsupportedPatternError`: If pattern string format is invalid
+- `UnsupportedPrimitiveError`: If DH, cipher, or hash function is not supported
 
 **Examples:**
 ```python
@@ -88,7 +89,7 @@ set_as_initiator() -> None
 Configure this handshake instance as the initiator (client).
 
 **Raises:**
-- `ValueError`: If role is already set
+- `RoleAlreadySetError`: If role is already set
 
 **Example:**
 ```python
@@ -104,7 +105,7 @@ set_as_responder() -> None
 Configure this handshake instance as the responder (server).
 
 **Raises:**
-- `ValueError`: If role is already set
+- `RoleAlreadySetError`: If role is already set
 
 **Example:**
 ```python
@@ -1917,21 +1918,197 @@ s_transport = NoiseTransport(s_send, s_recv)
 
 ---
 
-## Error Handling
+## Exception Handling
 
-All functions raise `ValueError` for invalid inputs or cryptographic failures:
+NoiseFramework provides a comprehensive hierarchy of custom exceptions with helpful, actionable error messages.
+
+### Exception Hierarchy
+
+All exceptions inherit from `NoiseError`, making it easy to catch any framework-specific error:
+
+```python
+NoiseError (base)
+├── HandshakeError
+│   ├── RoleNotSetError
+│   ├── RoleAlreadySetError
+│   ├── WrongTurnError
+│   ├── HandshakeCompleteError
+│   └── MissingKeyError
+├── PatternError
+│   ├── UnsupportedPatternError
+│   └── UnsupportedPrimitiveError
+├── StateError
+│   ├── NoKeySetError
+│   ├── NonceOverflowError
+│   └── InvalidKeySizeError
+├── TransportError
+│   └── AuthenticationError
+├── CryptoError
+├── ValidationError
+└── FramingError
+```
+
+### Exception Classes
+
+**`NoiseError`**: Base exception for all NoiseFramework errors. Catch this to handle any framework-specific error.
+
+**`HandshakeError`**: Base class for handshake-related errors.
+- **`RoleNotSetError`**: Role (initiator/responder) not set before operation
+- **`RoleAlreadySetError`**: Attempting to change role after it's been set
+- **`WrongTurnError`**: Attempting to send/receive out of turn
+- **`HandshakeCompleteError`**: Attempting handshake operation after completion
+- **`MissingKeyError`**: Required cryptographic key is missing
+
+**`PatternError`**: Base class for pattern-related errors.
+- **`UnsupportedPatternError`**: Invalid or unsupported Noise pattern
+- **`UnsupportedPrimitiveError`**: Unsupported DH, cipher, or hash function
+
+**`StateError`**: Base class for cipher/symmetric state errors.
+- **`NoKeySetError`**: Cipher operation attempted without key
+- **`NonceOverflowError`**: Nonce has reached maximum value (2^64)
+- **`InvalidKeySizeError`**: Cryptographic key has wrong size
+
+**`TransportError`**: Base class for transport-related errors.
+- **`AuthenticationError`**: Message authentication/decryption failed
+
+**`CryptoError`**: Generic cryptographic operation failure.
+
+**`ValidationError`**: Input validation failure (wrong types, out of range).
+
+**`FramingError`**: Framing protocol error (oversized message, truncated data).
+
+### Importing Exceptions
+
+```python
+from noiseframework import NoiseHandshake, NoiseTransport
+from noiseframework.exceptions import (
+    NoiseError,          # Base class - catches all
+    PatternError,        # Pattern-related errors
+    HandshakeError,      # Handshake-related errors
+    RoleNotSetError,     # Specific error types
+    UnsupportedPatternError,
+    AuthenticationError,
+    # ... import others as needed
+)
+```
+
+### Error Handling Patterns
+
+**Catch specific exceptions** for targeted handling:
 
 ```python
 try:
-    handshake = NoiseHandshake("Noise_InvalidPattern_25519_ChaChaPoly_SHA256")
-except ValueError as e:
-    print(f"Invalid pattern: {e}")
-
-try:
-    payload = responder.read_message(tampered_message)
-except ValueError as e:
-    print(f"Authentication failed: {e}")
+    hs = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+    hs.initialize()
+except RoleNotSetError:
+    # Handle role not set
+    hs.set_as_initiator()
+    hs.initialize()
+except MissingKeyError:
+    # Handle missing keys
+    hs.generate_static_keypair()
+    hs.initialize()
 ```
+
+**Catch base classes** for category handling:
+
+```python
+try:
+    hs = NoiseHandshake(pattern_string)
+except PatternError as e:
+    # Catches UnsupportedPatternError, UnsupportedPrimitiveError
+    print(f"Invalid pattern: {e}")
+except HandshakeError as e:
+    # Catches all handshake-related errors
+    print(f"Handshake error: {e}")
+```
+
+**Catch all framework errors**:
+
+```python
+try:
+    # ... noise operations ...
+except NoiseError as e:
+    # Catches ANY NoiseFramework exception
+    print(f"NoiseFramework error: {type(e).__name__}: {e}")
+except Exception as e:
+    # Catches non-framework errors
+    print(f"System error: {e}")
+```
+
+**Production error handling**:
+
+```python
+from noiseframework import NoiseHandshake, NoiseTransport
+from noiseframework.exceptions import (
+    UnsupportedPatternError,
+    RoleNotSetError,
+    MissingKeyError,
+    AuthenticationError,
+    NoiseError,
+)
+
+def safe_handshake(pattern: str) -> NoiseHandshake:
+    """Create handshake with comprehensive error handling."""
+    try:
+        hs = NoiseHandshake(pattern)
+        hs.set_as_initiator()
+        hs.generate_static_keypair()
+        hs.initialize()
+        return hs
+    except UnsupportedPatternError as e:
+        print(f"Invalid pattern '{pattern}': {e}")
+        raise
+    except (RoleNotSetError, MissingKeyError) as e:
+        print(f"Configuration error: {e}")
+        raise
+    except NoiseError as e:
+        print(f"Unexpected framework error: {e}")
+        raise
+```
+
+**Authentication failure handling**:
+
+```python
+try:
+    plaintext = transport.receive(ciphertext)
+    process_message(plaintext)
+except AuthenticationError as e:
+    # Message was tampered with or corrupted
+    print(f"Authentication failed: {e}")
+    # DO NOT process the message - discard it
+    disconnect_peer()
+```
+
+### Error Messages
+
+All exceptions include helpful context and actionable suggestions:
+
+**Pattern errors**:
+```
+UnsupportedPatternError: Invalid pattern string format: 'Invalid_Pattern'.
+Expected format: Noise_PATTERN_DH_CIPHER_HASH (e.g., Noise_XX_25519_ChaChaPoly_SHA256)
+```
+
+**Role errors**:
+```
+RoleNotSetError: Cannot write handshake message: role not set.
+Call set_as_initiator() or set_as_responder() first.
+```
+
+**Missing key errors**:
+```
+MissingKeyError: Cannot perform 'es' operation: remote static public key not available.
+For IK pattern, call set_remote_static_public_key() before initialize().
+```
+
+**Authentication errors**:
+```
+AuthenticationError: ChaCha20-Poly1305 decryption failed: authentication tag verification failed.
+This indicates message tampering, corruption, or wrong keys.
+```
+
+See `examples/error_handling_example.py` for comprehensive error handling examples.
 
 ---
 
