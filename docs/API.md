@@ -12,6 +12,11 @@ Complete API documentation for NoiseFramework.
   - [Log Levels](#log-levels)
   - [Logger Names](#logger-names)
   - [Usage Examples](#usage-examples)
+- [Framing](#framing)
+  - [FramedWriter](#framedwriter)
+  - [FramedReader](#framedreader)
+  - [Convenience Functions](#convenience-functions)
+  - [FramingError](#framingerror)
 - [Pattern System](#pattern-system)
   - [Pattern Parser](#pattern-parser)
   - [Supported Patterns](#supported-patterns)
@@ -621,6 +626,330 @@ msg = handshake.write_message(b"hello")
 ```
 
 See [`examples/logging_example.py`](../examples/logging_example.py) for more comprehensive examples.
+
+---
+
+## Framing
+
+Length-prefixed message framing utilities for stream-based transports (TCP, pipes, etc.). Solves the message boundary problem when using Noise over byte streams.
+
+### Frame Format
+
+NoiseFramework uses a simple 4-byte big-endian length prefix:
+
+```
+┌──────────────┬────────────────────┐
+│ Length (4B)  │  Message Data      │
+│ big-endian   │  (0 to 2^32-1 B)   │
+└──────────────┴────────────────────┘
+```
+
+- **Header**: 4 bytes, big-endian unsigned integer (`struct.pack("!I", length)`)
+- **Max Size**: Default 16 MB, configurable up to 4 GB (2^32-1 bytes)
+- **Data**: Raw message bytes (0 to max_message_size bytes)
+
+### FramedWriter
+
+Writes length-prefixed messages to a stream.
+
+#### Import
+
+```python
+from noiseframework import FramedWriter
+```
+
+#### Constructor
+
+```python
+FramedWriter(
+    stream,
+    max_message_size: int = 16 * 1024 * 1024,  # 16 MB
+    logger: Optional[logging.Logger] = None
+) -> FramedWriter
+```
+
+**Parameters:**
+- `stream`: Writable byte stream (e.g., `socket.makefile('wb')`, `open('file', 'wb')`, `io.BytesIO()`)
+- `max_message_size` (int, optional): Maximum allowed message size in bytes. Default: 16 MB (16777216). Must be > 0 and < 2^32.
+- `logger` (logging.Logger, optional): Custom logger. Default: `logging.getLogger("noiseframework.framing.FramedWriter")`
+
+**Raises:**
+- `ValueError`: If `max_message_size` is ≤ 0 or ≥ 2^32
+
+#### Methods
+
+##### `write_message(message: bytes) -> None`
+
+Write a length-prefixed message to the stream.
+
+**Parameters:**
+- `message` (bytes): Message data to write
+
+**Raises:**
+- `FramingError`: If message size exceeds `max_message_size`
+- `IOError`: If underlying stream write fails
+
+**Example:**
+```python
+writer = FramedWriter(sock.makefile('wb'))
+writer.write_message(b"Hello, World!")
+writer.write_message(ciphertext)
+```
+
+##### `close() -> None`
+
+Close the underlying stream.
+
+**Example:**
+```python
+writer.close()
+```
+
+#### Properties
+
+##### `messages_sent: int`
+
+Number of messages successfully written. Useful for debugging and monitoring.
+
+**Example:**
+```python
+print(f"Sent {writer.messages_sent} messages")
+```
+
+### FramedReader
+
+Reads length-prefixed messages from a stream.
+
+#### Import
+
+```python
+from noiseframework import FramedReader
+```
+
+#### Constructor
+
+```python
+FramedReader(
+    stream,
+    max_message_size: int = 16 * 1024 * 1024,  # 16 MB
+    logger: Optional[logging.Logger] = None
+) -> FramedReader
+```
+
+**Parameters:**
+- `stream`: Readable byte stream (e.g., `socket.makefile('rb')`, `open('file', 'rb')`, `io.BytesIO()`)
+- `max_message_size` (int, optional): Maximum allowed message size in bytes. Default: 16 MB (16777216). Must be > 0 and < 2^32.
+- `logger` (logging.Logger, optional): Custom logger. Default: `logging.getLogger("noiseframework.framing.FramedReader")`
+
+**Raises:**
+- `ValueError`: If `max_message_size` is ≤ 0 or ≥ 2^32
+
+#### Methods
+
+##### `read_message() -> bytes`
+
+Read a length-prefixed message from the stream.
+
+Automatically handles partial reads by accumulating data until the complete message is received.
+
+**Returns:**
+- `bytes`: The message data (without the length header)
+
+**Raises:**
+- `FramingError`: If message length exceeds `max_message_size`, header is truncated, or message data is truncated
+- `IOError`: If underlying stream read fails
+
+**Example:**
+```python
+reader = FramedReader(sock.makefile('rb'))
+message = reader.read_message()
+print(f"Received: {message}")
+```
+
+##### `close() -> None`
+
+Close the underlying stream.
+
+**Example:**
+```python
+reader.close()
+```
+
+#### Properties
+
+##### `messages_received: int`
+
+Number of messages successfully read. Useful for debugging and monitoring.
+
+**Example:**
+```python
+print(f"Received {reader.messages_received} messages")
+```
+
+### Convenience Functions
+
+For single-message operations without maintaining reader/writer objects.
+
+#### `write_framed_message(stream, message: bytes, max_message_size: int = ...) -> None`
+
+Write a single framed message.
+
+**Parameters:**
+- `stream`: Writable byte stream
+- `message` (bytes): Message to write
+- `max_message_size` (int, optional): Maximum allowed size. Default: 16 MB
+
+**Example:**
+```python
+from noiseframework import write_framed_message
+
+with open('data.bin', 'wb') as f:
+    write_framed_message(f, b"Hello")
+    write_framed_message(f, b"World")
+```
+
+#### `read_framed_message(stream, max_message_size: int = ...) -> bytes`
+
+Read a single framed message.
+
+**Parameters:**
+- `stream`: Readable byte stream
+- `max_message_size` (int, optional): Maximum allowed size. Default: 16 MB
+
+**Returns:**
+- `bytes`: The message data
+
+**Example:**
+```python
+from noiseframework import read_framed_message
+
+with open('data.bin', 'rb') as f:
+    msg1 = read_framed_message(f)
+    msg2 = read_framed_message(f)
+```
+
+### FramingError
+
+Exception raised for framing-related errors.
+
+#### Import
+
+```python
+from noiseframework import FramingError
+```
+
+#### Usage
+
+```python
+try:
+    message = reader.read_message()
+except FramingError as e:
+    if "exceeds maximum" in str(e):
+        print("Message too large")
+    elif "Connection closed" in str(e):
+        print("Connection terminated")
+    else:
+        print(f"Framing error: {e}")
+```
+
+#### Common Error Messages
+
+- `"Frame length {size} exceeds maximum allowed size {max}"` - Message header indicates size > max_message_size
+- `"Message size {size} exceeds maximum allowed size {max}"` - Attempted to write oversized message
+- `"Connection closed while reading frame header: expected 4 bytes, got {n}"` - Header truncated
+- `"Connection closed: expected {size} bytes, got {n}"` - Message data truncated
+
+### Complete TCP Example
+
+```python
+import socket
+from noiseframework import NoiseHandshake, FramedWriter, FramedReader
+
+# Server
+def server():
+    with socket.socket() as sock:
+        sock.bind(('localhost', 8000))
+        sock.listen(1)
+        conn, _ = sock.accept()
+        
+        # Noise handshake
+        hs = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+        hs.set_as_responder()
+        hs.generate_static_keypair()
+        hs.initialize()
+        
+        # Framed communication
+        reader = FramedReader(conn.makefile('rb'))
+        writer = FramedWriter(conn.makefile('wb'))
+        
+        # Handshake messages (3 messages for XX)
+        msg1 = reader.read_message()
+        msg2 = hs.read_message(msg1)
+        msg2_out = hs.write_message(msg2)
+        writer.write_message(msg2_out)
+        
+        msg3 = reader.read_message()
+        hs.read_message(msg3)
+        
+        # Transport mode
+        transport = hs.to_transport()
+        
+        # Receive encrypted message
+        ciphertext = reader.read_message()
+        plaintext = transport.receive(ciphertext)
+        print(f"Received: {plaintext}")
+        
+        # Send encrypted response
+        response = transport.send(b"Hello, Client!")
+        writer.write_message(response)
+
+# Client
+def client():
+    with socket.socket() as sock:
+        sock.connect(('localhost', 8000))
+        
+        # Noise handshake
+        hs = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+        hs.set_as_initiator()
+        hs.generate_static_keypair()
+        hs.initialize()
+        
+        # Framed communication
+        reader = FramedReader(sock.makefile('rb'))
+        writer = FramedWriter(sock.makefile('wb'))
+        
+        # Handshake messages (3 messages for XX)
+        msg1 = hs.write_message(b"")
+        writer.write_message(msg1)
+        
+        msg2 = reader.read_message()
+        msg3_payload = hs.read_message(msg2)
+        msg3 = hs.write_message(msg3_payload)
+        writer.write_message(msg3)
+        
+        # Transport mode
+        transport = hs.to_transport()
+        
+        # Send encrypted message
+        ciphertext = transport.send(b"Hello, Server!")
+        writer.write_message(ciphertext)
+        
+        # Receive encrypted response
+        response_ciphertext = reader.read_message()
+        response = transport.receive(response_ciphertext)
+        print(f"Received: {response}")
+```
+
+### Best Practices
+
+1. **Always use framing over TCP/streams**: Noise encryption doesn't preserve message boundaries
+2. **Set appropriate max_message_size**: Prevents DoS via memory exhaustion
+3. **Enable logging in development**: Helps debug connection issues
+4. **Handle FramingError**: Connection may close unexpectedly
+5. **Use context managers**: Ensure streams are properly closed
+6. **Thread safety**: FramedReader and FramedWriter are thread-safe for concurrent read/write on different threads
+
+See [`examples/framed_tcp_example.py`](../examples/framed_tcp_example.py) for a complete working example.
 
 ---
 
