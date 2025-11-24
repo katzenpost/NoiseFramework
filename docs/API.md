@@ -125,7 +125,7 @@ Set the static (long-term) key pair for this handshake.
 - `public_key` (bytes): Public key (length depends on DH function)
 
 **Raises:**
-- `ValueError`: If key sizes are incorrect
+- `ValidationError`: If key sizes are incorrect
 
 **Example:**
 ```python
@@ -150,7 +150,7 @@ Set the remote peer's known static public key (for patterns like IK, IKpsk).
 - `public_key` (bytes): Remote static public key
 
 **Raises:**
-- `ValueError`: If key size is incorrect
+- `ValidationError`: If key size is incorrect
 
 **Example:**
 ```python
@@ -167,8 +167,8 @@ initialize() -> None
 Initialize the handshake state and begin the protocol.
 
 **Raises:**
-- `ValueError`: If role is not set
-- `ValueError`: If required keys are missing for the pattern
+- `RoleNotSetError`: If role is not set
+- `MissingKeyError`: If required keys are missing for the pattern
 
 **Note:** The protocol name from the pattern string is automatically used to initialize the handshake hash.
 
@@ -192,8 +192,9 @@ Write the next handshake message.
 - `bytes`: Handshake message to send to peer
 
 **Raises:**
-- `ValueError`: If handshake is not started or already complete
-- `ValueError`: If not this party's turn to send
+- `RoleNotSetError`: If handshake is not started
+- `HandshakeCompleteError`: If handshake is already complete
+- `WrongTurnError`: If not this party's turn to send
 
 **Example:**
 ```python
@@ -219,9 +220,10 @@ Read and process a handshake message from the peer.
 - `bytes`: Application payload extracted from message (may be empty)
 
 **Raises:**
-- `ValueError`: If handshake is not started
-- `ValueError`: If message is malformed or authentication fails
-- `ValueError`: If not this party's turn to receive
+- `RoleNotSetError`: If handshake is not started
+- `AuthenticationError`: If message is malformed or authentication fails
+- `WrongTurnError`: If not this party's turn to receive
+- `MissingKeyError`: If required keys are missing for DH operations
 
 **Example:**
 ```python
@@ -258,7 +260,7 @@ Convert completed handshake to transport mode for ongoing communication.
   - Responder: sends with second cipher, receives with first
 
 **Raises:**
-- `ValueError`: If handshake is not complete
+- `HandshakeCompleteError`: If handshake is not complete (should be called only after handshake finishes)
 
 **Example:**
 ```python
@@ -367,7 +369,8 @@ Encrypt and send a message.
 - `bytes`: Ciphertext with authentication tag
 
 **Raises:**
-- `ValueError`: If encryption fails or nonce overflow occurs
+- `NoKeySetError`: If cipher key is not set
+- `NonceOverflowError`: If nonce overflow occurs (after 2^64 messages)
 
 **Example:**
 ```python
@@ -390,7 +393,9 @@ Receive and decrypt a message.
 - `bytes`: Plaintext
 
 **Raises:**
-- `ValueError`: If decryption or authentication fails
+- `NoKeySetError`: If cipher key is not set
+- `NonceOverflowError`: If nonce overflow occurs
+- `AuthenticationError`: If decryption or authentication fails (message tampered/corrupted)
 
 **Example:**
 ```python
@@ -1610,7 +1615,7 @@ Perform Diffie-Hellman key agreement.
 - `bytes`: Shared secret
 
 **Raises:**
-- `ValueError`: If key sizes are invalid
+- `InvalidKeySizeError`: If key sizes are invalid
 
 #### Supported DH Functions
 
@@ -1679,7 +1684,7 @@ Decrypt and verify authentication.
 - `bytes`: Plaintext
 
 **Raises:**
-- `ValueError`: If authentication fails
+- `AuthenticationError`: If authentication fails (message tampered or corrupted)
 
 #### Supported Ciphers
 
