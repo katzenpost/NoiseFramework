@@ -35,6 +35,8 @@
   - [Message Framing](#message-framing)
   - [Async/Await Support](#asyncawait-support)
   - [Pre-Shared Key (PSK) Support](#pre-shared-key-psk-support)
+  - [Fallback Pattern Support](#fallback-pattern-support)
+  - [High-Level Connection API](#high-level-connection-api)
 - [CLI Documentation](#-cli-documentation)
   - [Generate Keypair](#generate-keypair)
   - [Validate Pattern](#validate-pattern)
@@ -58,7 +60,7 @@
 - **🔒 Secure by Default**: Uses well-vetted cryptographic primitives from trusted libraries
 - **🐍 Pythonic API**: Simple, type-hinted interfaces that are easy to use and hard to misuse
 - **🛠️ CLI Tool**: Command-line interface for encryption, decryption, and handshake operations
-- **✅ Well-Tested**: Comprehensive test suite with 290 tests achieving 100% pass rate
+- **✅ Well-Tested**: Comprehensive test suite with 311 tests achieving 100% pass rate
 - **📦 Zero Config**: Works out-of-the-box with sensible defaults
 - **🔧 Flexible**: Supports multiple DH functions, cipher suites, and hash functions
 - **🛡️ PSK Support**: Pre-Shared Key patterns for quantum-resistant authentication (psk0-psk4)
@@ -987,6 +989,141 @@ async def async_psk_example():
 - **Late PSK (psk3)**: Allows public key exchange first, then adds PSK protection
 
 See [`examples/psk_example.py`](examples/psk_example.py) for complete working examples of NNpsk0, XXpsk3, and IKpsk2 patterns.
+
+---
+
+### Fallback Pattern Support
+
+NoiseFramework supports fallback patterns for graceful handshake degradation when the initiator's first message cannot be decrypted. This implements the **Noise Pipes protocol** (Section 10.2 of the Noise spec).
+
+#### What are Fallback Patterns?
+
+Fallback patterns enable recovery from handshake failures without dropping the connection:
+- **Graceful Degradation**: When IK/NK fails, fallback to XX pattern
+- **Key Rotation**: Handle responder static key changes
+- **PSK Outdated**: Recover from outdated pre-shared keys
+- **Role Reversal**: Responder becomes effective initiator in fallback
+
+#### Noise Pipes Protocol (IK → XXfallback)
+
+The most common fallback scenario is **Noise Pipes**: Alice attempts IK, Bob detects wrong static key and falls back to XXfallback.
+
+```python
+import os
+from noiseframework import NoiseHandshake
+
+# Bob generates his real keys
+bob = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+bob.set_as_responder()
+bob.generate_static_keypair()
+bob.initialize()
+
+# Alice attempts IK with WRONG Bob static key (outdated)
+alice = NoiseHandshake("Noise_IK_25519_ChaChaPoly_SHA256")
+alice.set_as_initiator()
+alice.generate_static_keypair()
+alice.set_remote_static_public_key(wrong_bob_key)  # Outdated key
+alice.initialize()
+
+# Alice sends IK first message - will fail decryption
+ik_msg1 = alice.write_message(b"Hello Bob")
+
+# Bob cannot decrypt - extract Alice's ephemeral key (first 32 bytes)
+alice_ephemeral = ik_msg1[:32]
+
+# Bob initiates fallback to XXfallback
+bob.start_fallback(alice_ephemeral)
+
+# Bob now sends first XXfallback message (role reversal)
+fallback_msg1 = bob.write_message(b"Fallback initiated")
+
+# Alice detects IK failure and switches to XXfallback
+alice_fallback = NoiseHandshake("Noise_XXfallback_25519_ChaChaPoly_SHA256")
+alice_fallback.set_as_initiator()
+alice_fallback.set_static_keypair(alice.static_private, alice.static_public)
+
+# Reuse Alice's ephemeral keys (XXfallback uses them as pre-message)
+alice_fallback.ephemeral_private = alice.ephemeral_private
+alice_fallback.ephemeral_public = alice.ephemeral_public
+alice_fallback.initialize()
+
+# Alice reads Bob's fallback message
+payload1 = alice_fallback.read_message(fallback_msg1)
+
+# Alice sends her static key (second XXfallback message)
+fallback_msg2 = alice_fallback.write_message(b"Acknowledged")
+
+# Bob reads Alice's response - handshake complete!
+payload2 = bob.read_message(fallback_msg2)
+
+# Create transport channels
+bob_send, bob_recv = bob.to_transport()
+alice_send, alice_recv = alice_fallback.to_transport()
+
+# Secure communication established despite initial IK failure!
+```
+
+#### Fallback Mechanics
+
+**Pattern Transformation:**
+```
+XX → XXfallback    # First message "e" becomes pre-message
+NN → NNfallback    # First message "e" becomes pre-message
+IK → XXfallback    # Cannot use IKfallback (first message contains DH)
+NK → XXfallback    # Cannot use NKfallback (first message contains DH)
+```
+
+**Valid Fallback Patterns:**
+- Fallback requires initiator's first message to be "e", "s", or "e, s"
+- Cannot fallback patterns where first message contains DH operations (es, se, ss, ee)
+
+**Fallback Process:**
+1. Responder receives initiator's first message but cannot decrypt
+2. Responder extracts initiator's ephemeral key from failed message
+3. Responder calls `start_fallback(remote_ephemeral_public_key)`
+4. Pattern switches (e.g., XX → XXfallback), state re-initialized
+5. Responder sends first message (role reversal)
+6. Initiator also switches to fallback pattern
+7. Handshake completes normally with fallback pattern
+
+#### API Usage
+
+```python
+# Responder only - call when decryption fails
+handshake.start_fallback(remote_ephemeral_public_key: bytes) -> None
+
+# Async version
+await handshake.start_fallback(remote_ephemeral_public_key: bytes)
+
+# Example error handling with fallback
+try:
+    payload = responder.read_message(initiator_msg1)
+except Exception:
+    # Extract ephemeral key (first DHLEN bytes)
+    alice_ephemeral = initiator_msg1[:32]  # 32 for Curve25519
+    responder.start_fallback(alice_ephemeral)
+    # Continue with fallback pattern...
+```
+
+#### Security Considerations
+
+**When to Use Fallback:**
+- Server static key rotation scenarios
+- PSK may be outdated but fallback acceptable
+- Graceful degradation preferred over connection failure
+
+**Fallback Limitations:**
+- Both parties must coordinate fallback (initiator must also switch)
+- Ephemeral key must be preserved from failed message
+- Only works with patterns where first message can be pre-message
+
+**Noise Pipes Use Case:**
+The IK → XXfallback pattern is standardized as "Noise Pipes" and widely used for:
+- IoT device provisioning (device has outdated server key)
+- Server key rotation (clients gradually update)
+- Fallback from authenticated to mutual authentication
+
+See [`examples/fallback_example.py`](examples/fallback_example.py) for a complete working demonstration of the Noise Pipes protocol with IK → XXfallback.
 
 ---
 

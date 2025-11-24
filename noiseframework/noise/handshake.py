@@ -70,8 +70,11 @@ class NoiseHandshake:
 
         # Get handshake message patterns
         self.initiator_pre, self.responder_pre, self.message_patterns = get_pattern_tokens(
-            self.pattern.handshake_pattern, self.pattern.psk_modifier
+            self.pattern.handshake_pattern, self.pattern.psk_modifier, self.pattern.fallback_modifier
         )
+        
+        # Set fallback flag based on pattern
+        self.is_fallback = self.pattern.fallback_modifier is not None
 
         # Initialize symmetric state
         self.symmetric = SymmetricState(self.hash, self.cipher, logger=self.logger)
@@ -254,7 +257,16 @@ class NoiseHandshake:
         """Process pre-message patterns (known keys)."""
         # Initiator pre-messages
         for token in self.initiator_pre:
-            if token == "s":
+            if token == "e":
+                if self.role == Role.INITIATOR:
+                    # We are sending our ephemeral key (already generated for fallback)
+                    if self.ephemeral_public:
+                        self.symmetric.mix_hash(self.ephemeral_public)
+                elif self.role == Role.RESPONDER:
+                    # We are receiving their ephemeral key (stored during start_fallback)
+                    if self.remote_ephemeral_public:
+                        self.symmetric.mix_hash(self.remote_ephemeral_public)
+            elif token == "s":
                 if self.role == Role.INITIATOR:
                     # We are sending our static key
                     if self.static_public:
@@ -266,7 +278,16 @@ class NoiseHandshake:
 
         # Responder pre-messages
         for token in self.responder_pre:
-            if token == "s":
+            if token == "e":
+                if self.role == Role.RESPONDER:
+                    # We are sending our ephemeral key
+                    if self.ephemeral_public:
+                        self.symmetric.mix_hash(self.ephemeral_public)
+                elif self.role == Role.INITIATOR:
+                    # We are receiving their ephemeral key
+                    if self.remote_ephemeral_public:
+                        self.symmetric.mix_hash(self.remote_ephemeral_public)
+            elif token == "s":
                 if self.role == Role.RESPONDER:
                     # We are sending our static key
                     if self.static_public:
@@ -303,14 +324,25 @@ class NoiseHandshake:
             )
 
         # Check if it's our turn to send
-        is_our_turn = (
-            self.message_index % 2 == 0
-            if self.role == Role.INITIATOR
-            else self.message_index % 2 == 1
-        )
+        # In fallback patterns, the responder sends first (becomes effective initiator)
+        if self.is_fallback:
+            # In fallback, responder acts as initiator for turn purposes
+            is_our_turn = (
+                self.message_index % 2 == 0
+                if self.role == Role.RESPONDER  # Responder sends first in fallback
+                else self.message_index % 2 == 1
+            )
+        else:
+            # Normal pattern: initiator sends first
+            is_our_turn = (
+                self.message_index % 2 == 0
+                if self.role == Role.INITIATOR
+                else self.message_index % 2 == 1
+            )
+        
         if not is_our_turn:
             self.logger.error(f"Attempted to send message out of turn (message_index={self.message_index})")
-            expected_action = "read_message" if self.role == Role.INITIATOR else "write_message"
+            expected_action = "read_message" if (self.role == Role.INITIATOR and not self.is_fallback) or (self.role == Role.RESPONDER and self.is_fallback) else "write_message"
             raise WrongTurnError(
                 f"Cannot write message: not your turn (currently at message {self.message_index + 1}). "
                 f"As {self.role.value}, you should call {expected_action}() next."
@@ -441,11 +473,22 @@ class NoiseHandshake:
             )
 
         # Check if it's our turn to receive
-        is_our_turn = (
-            self.message_index % 2 == 1
-            if self.role == Role.INITIATOR
-            else self.message_index % 2 == 0
-        )
+        # In fallback patterns, the responder sends first (so initiator receives first)
+        if self.is_fallback:
+            # In fallback, responder sends first, so initiator receives first
+            is_our_turn = (
+                self.message_index % 2 == 1
+                if self.role == Role.RESPONDER  # Responder receives second in fallback
+                else self.message_index % 2 == 0
+            )
+        else:
+            # Normal pattern: initiator sends first, so responder receives first
+            is_our_turn = (
+                self.message_index % 2 == 1
+                if self.role == Role.INITIATOR
+                else self.message_index % 2 == 0
+            )
+        
         if not is_our_turn:
             self.logger.error(f"Attempted to receive message out of turn (message_index={self.message_index})")
             expected_action = "write_message" if self.role == Role.INITIATOR else "read_message"
@@ -560,6 +603,140 @@ class NoiseHandshake:
                 f"Complete the handshake before calling get_handshake_hash()."
             )
         return self.symmetric.get_handshake_hash()
+
+    def start_fallback(self, remote_ephemeral_public_key: bytes) -> None:
+        """
+        Initiate a fallback handshake.
+
+        This method is called by the responder when it cannot decrypt the initiator's 
+        first message (e.g., IK message with wrong static key or outdated PSK).
+        It converts the current pattern to a fallback pattern by treating Alice's 
+        (initiator's) first message as a pre-message.
+
+        According to the Noise spec Section 10.2:
+        - The responder (Bob) receives Alice's first message but cannot process it
+        - Bob preserves Alice's ephemeral public key from that message
+        - Bob switches to the fallback pattern (e.g., IK → XXfallback)
+        - Bob becomes the effective initiator of the fallback pattern
+        - The handshake continues with Bob sending the first message
+
+        Args:
+            remote_ephemeral_public_key: Alice's ephemeral public key from the failed message
+
+        Raises:
+            RoleNotSetError: If role is not set as responder
+            ValidationError: If fallback cannot be applied to this pattern or if key size is invalid
+            HandshakeCompleteError: If handshake is already complete
+        """
+        self.logger.debug(f"Starting fallback handshake with remote ephemeral: {remote_ephemeral_public_key.hex()[:16]}...")
+        
+        # Only responder can initiate fallback (Bob receives failed message from Alice)
+        if self.role != Role.RESPONDER:
+            raise RoleNotSetError(
+                f"Cannot initiate fallback: only responder can call start_fallback(). "
+                f"Current role is {self.role.value if self.role else 'not set'}. "
+                f"Fallback is triggered by the responder when it cannot decrypt the initiator's first message."
+            )
+        
+        # Cannot fallback after handshake is complete
+        if self.handshake_complete:
+            raise HandshakeCompleteError(
+                f"Cannot initiate fallback: handshake already complete. "
+                f"Fallback must be called before completing the handshake."
+            )
+        
+        # Validate ephemeral key size
+        if len(remote_ephemeral_public_key) != self.dh.dhlen:
+            self.logger.error(f"Invalid remote ephemeral key size: expected {self.dh.dhlen}, got {len(remote_ephemeral_public_key)}")
+            raise ValidationError(
+                f"Invalid remote ephemeral key size: expected {self.dh.dhlen} bytes, got {len(remote_ephemeral_public_key)} bytes. "
+                f"Ensure the remote party is using the same DH function."
+            )
+        
+        # Check if the pattern can be converted to fallback
+        # Fallback requires Alice's first message to be "e", "s", or "e, s"
+        if not self.message_patterns:
+            raise ValidationError(
+                f"Cannot apply fallback to pattern '{self.pattern.handshake_pattern}': no messages to convert. "
+                f"Fallback requires at least one message in the pattern."
+            )
+        
+        first_message = self.message_patterns[0]
+        if first_message not in ["e", "s", "e, s"]:
+            raise ValidationError(
+                f"Cannot apply fallback to pattern '{self.pattern.handshake_pattern}': "
+                f"first message '{first_message}' cannot be converted to a pre-message. "
+                f"Fallback can only be applied to patterns where Alice's first message is 'e', 's', or 'e, s'."
+            )
+        
+        self.logger.info(f"Converting pattern '{self.pattern.handshake_pattern}' to fallback pattern")
+        
+        # Construct the fallback pattern name
+        fallback_pattern_name = f"Noise_{self.pattern.handshake_pattern}fallback_{self.pattern.dh_function}_{self.pattern.cipher_function}_{self.pattern.hash_function}"
+        self.logger.debug(f"Fallback pattern name: {fallback_pattern_name}")
+        
+        # Parse the fallback pattern
+        fallback_pattern = parse_pattern(fallback_pattern_name)
+        
+        # Get new message patterns for fallback
+        new_initiator_pre, new_responder_pre, new_message_patterns = get_pattern_tokens(
+            fallback_pattern.handshake_pattern,
+            fallback_pattern.psk_modifier,
+            fallback_pattern.fallback_modifier
+        )
+        
+        self.logger.debug(
+            f"Fallback pattern tokens - Initiator pre: {new_initiator_pre}, "
+            f"Responder pre: {new_responder_pre}, Messages: {new_message_patterns}"
+        )
+        
+        # Store the remote ephemeral key from Alice's failed message
+        self.remote_ephemeral_public = remote_ephemeral_public_key
+        self.logger.debug(f"Stored remote ephemeral public key: {remote_ephemeral_public_key.hex()[:16]}...")
+        
+        # Re-initialize the handshake with fallback pattern
+        # Note: The responder becomes the effective initiator in the fallback pattern
+        # but maintains the RESPONDER role for the overall protocol
+        self.pattern = fallback_pattern
+        self.initiator_pre = new_initiator_pre
+        self.responder_pre = new_responder_pre
+        self.message_patterns = new_message_patterns
+        
+        # Reset message index (we're starting the fallback handshake from message 0)
+        self.message_index = 0
+        self.handshake_complete = False
+        self.is_fallback = True  # Mark this as a fallback handshake
+        
+        # Re-initialize symmetric state with the fallback protocol name
+        protocol_name = self.pattern.name.encode("ascii")
+        self.symmetric.initialize_symmetric(protocol_name)
+        self.logger.debug(f"Symmetric state re-initialized with fallback protocol: {self.pattern.name}")
+        
+        # Process pre-messages for fallback pattern
+        # Alice's ephemeral key is now treated as a pre-message
+        for token in self.initiator_pre:
+            if token == "e":
+                # Mix Alice's ephemeral key from the failed message
+                self.symmetric.mix_hash(remote_ephemeral_public_key)
+                self.logger.debug("Mixed remote ephemeral key as initiator pre-message")
+            elif token == "s":
+                # Mix Alice's static key if it was in the pre-message
+                if self.remote_static_public:
+                    self.symmetric.mix_hash(self.remote_static_public)
+                    self.logger.debug("Mixed remote static key as initiator pre-message")
+        
+        # Process responder pre-messages (Bob's keys)
+        for token in self.responder_pre:
+            if token == "s":
+                # Mix Bob's static key if it exists
+                if self.static_public:
+                    self.symmetric.mix_hash(self.static_public)
+                    self.logger.debug("Mixed local static key as responder pre-message")
+        
+        self.logger.info(
+            f"Fallback handshake initialized. Ready to send first fallback message as responder. "
+            f"Pattern: {self.pattern.name}, Messages remaining: {len(self.message_patterns)}"
+        )
 
     def to_transport(self) -> Tuple[CipherState, CipherState]:
         """

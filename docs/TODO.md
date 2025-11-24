@@ -2,7 +2,7 @@
 
 This document tracks implementation tasks for NoiseFramework enhancements (version 1.3.0 - Production Readiness).
 
-**Progress**: 6/7 complete (86%)
+**Progress**: 7/7 complete (100%)
 
 ---
 
@@ -983,48 +983,142 @@ payload2 = initiator.read_message(msg2)  # "World"
 
 ---
 
-### 7. ⏳ **Fallback Pattern Support** [TODO]
+### 7. ✅ **Fallback Pattern Support** [DONE]
 
-**Goal**: Add support for fallback patterns (XXfallback, etc.)
+**Goal**: Add support for fallback patterns for graceful handshake degradation (Noise Pipes protocol).
 
 **Tasks**:
-- [ ] Implement fallback pattern parsing
-- [ ] Add fallback handshake logic
-- [ ] Add `start_fallback()` method or similar
-- [ ] Add examples showing fallback scenarios
-- [ ] Add tests for fallback transitions
+- [x] Implement fallback pattern parsing
+- [x] Add fallback handshake logic
+- [x] Add `start_fallback()` method
+- [x] Add examples showing fallback scenarios
+- [x] Add tests for fallback transitions
 
 **Target Files**:
-- Modify: `noiseframework/noise/pattern.py`
-- Modify: `noiseframework/noise/handshake.py`
-- New: `examples/fallback_example.py`
-- New: `tests/test_fallback.py`
-- Update: `docs/API.md`
+- Modified: `noiseframework/noise/pattern.py` (added fallback_modifier field, regex, validation)
+- Modified: `noiseframework/noise/handshake.py` (added start_fallback(), turn logic, ephemeral pre-messages)
+- Modified: `noiseframework/async_support.py` (added async start_fallback())
+- New: `examples/fallback_example.py` (~140 lines, IK→XXfallback demonstration)
+- New: `tests/test_fallback.py` (21 tests, 100% pass rate)
+- Updated: `docs/API.md`
+- Updated: `docs/CHANGELOG.md`
 
-**Fallback Scenarios**:
-- IK → XXfallback (when responder key is wrong)
-- NK → XXfallback (when authentication fails)
+**Implementation Strategy**:
+- Responder-only operation triggered when initiator's first message cannot be decrypted
+- Fallback modifier appended to pattern name: `Noise_XXfallback_25519_ChaChaPoly_SHA256`
+- Pattern transformation: moves initiator's first message to pre-message (XX → XXfallback)
+- Preserves initiator's ephemeral key, re-initializes symmetric state with fallback protocol name
+- Custom turn-checking logic (`is_fallback` flag) since responder becomes effective initiator
 
 **Implementation Notes**:
+
+**Import Statements**:
+```python
+from noiseframework import NoiseHandshake, AsyncNoiseHandshake
 ```
-[When completed, document here:]
-- How to trigger fallback
-- Which patterns support fallback
-- API for fallback handling
-- Example usage
-- Security implications
+
+**NoiseHandshake.start_fallback() API**:
+```python
+# Responder only - call when initiator's first message cannot be decrypted
+handshake.start_fallback(remote_ephemeral_public_key: bytes) -> None
+
+# Example: Bob (responder) detects IK decryption failure
+bob = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+bob.set_as_responder()
+bob.generate_static_keypair()
+bob.initialize()
+
+# Alice sends IK message (fails decryption)
+# Extract Alice's ephemeral key from failed message (first 32 bytes)
+alice_ephemeral = failed_ik_msg[:32]
+
+# Bob initiates fallback to XXfallback
+bob.start_fallback(alice_ephemeral)
+
+# Bob now sends first XXfallback message (role reversal)
+fallback_msg1 = bob.write_message(b"Fallback initiated")
 ```
+
+**AsyncNoiseHandshake.start_fallback() API**:
+```python
+# Async version - same parameters and behavior
+await handshake.start_fallback(remote_ephemeral_public_key: bytes)
+```
+
+**Fallback Pattern Parsing**:
+```python
+from noiseframework.noise.pattern import parse_pattern
+
+# Parse fallback pattern
+pattern = parse_pattern("Noise_XXfallback_25519_ChaChaPoly_SHA256")
+assert pattern.fallback_modifier == "fallback"
+
+# Fallback patterns can be used directly
+alice = NoiseHandshake("Noise_XXfallback_25519_ChaChaPoly_SHA256")
+# In XXfallback, Alice's ephemeral is a pre-message (must set before initialize)
+alice.ephemeral_private = existing_ephemeral_private
+alice.ephemeral_public = existing_ephemeral_public
+alice.initialize()
+```
+
+**Fallback Scenarios**:
+- **IK → XXfallback** (Noise Pipes): When responder's static key changed or PSK outdated
+- **NK → XXfallback**: When authentication fails
+- **XX → XXfallback**: Direct XXfallback pattern usage (Alice's ephemeral as pre-message)
+
+**Pattern Validation**:
+```python
+# Valid: First message is "e", "s", or "e, s"
+"XX" → "XXfallback"  # First message: "e" ✓
+"NN" → "NNfallback"  # First message: "e" ✓
+
+# Invalid: First message contains DH operations (cannot be pre-message)
+"IK" → "IKfallback"  # First message: "e, es, s, ss" ✗ (contains DH)
+"NK" → "NKfallback"  # First message: "e, es" ✗ (contains DH)
+
+# Solution: Use XXfallback instead
+"IK" → "XXfallback"  ✓
+"NK" → "XXfallback"  ✓
+```
+
+**Fallback Mechanics**:
+1. **Trigger**: Responder (Bob) receives initiator's (Alice's) first message but cannot decrypt it
+2. **Ephemeral Extraction**: Bob extracts Alice's ephemeral public key from failed message
+3. **Pattern Switch**: Bob calls `start_fallback(alice_ephemeral)` to switch pattern
+4. **State Re-initialization**: Symmetric state re-initialized with fallback protocol name
+5. **Pre-message Processing**: Alice's ephemeral mixed as pre-message (both parties)
+6. **Role Reversal**: Bob sends first message in fallback (becomes effective initiator)
+7. **Turn Logic**: Custom turn-checking (`is_fallback=True`) handles reversed roles
+8. **Handshake Completion**: Both parties complete fallback handshake normally
+9. **Transport**: Normal transport channels established after fallback handshake
+
+**Security Implications**:
+- **Graceful Degradation**: Enables recovery from key mismatches without connection failure
+- **Ephemeral Key Preservation**: Alice's ephemeral key preserved (no re-generation needed)
+- **Pattern Transformation**: Cryptographically sound transformation per Noise spec
+- **Role Awareness**: Both parties must coordinate fallback (Alice must also switch to XXfallback)
+- **Use Cases**: Key rotation, outdated PSKs, server identity updates
+- **Noise Pipes Protocol**: Standard protocol for IK → XXfallback graceful degradation
+
+**Test Coverage**:
+- 21 comprehensive tests (100% pass rate)
+- Pattern parsing: XXfallback, IKfallback, NKfallback, invalid modifiers (5 tests)
+- Token transformation: XX → XXfallback, IK/NK validation (5 tests)
+- Handshake setup: responder-only, completion checks, key validation (6 tests)
+- Full handshakes: IK→XXfallback (Noise Pipes), normal XX comparison (2 tests)
+- Async support: async start_fallback() (1 test)
+- Error cases: invalid patterns, multiple fallback calls (2 tests)
 
 ---
 
 ## 📊 **Progress Tracking**
 
-**Completed**: 1 / 7 (14%)
+**Completed**: 7 / 7 (100%) ✅
 **In Progress**: 0
-**Not Started**: 6
+**Not Started**: 0
 
-**Latest Completion**: Logging Support (November 24, 2025)
-**Estimated Release**: TBD
+**Latest Completion**: Fallback Pattern Support (December 2025)
+**Estimated Release**: v1.3.0 - Ready for production
 
 ---
 

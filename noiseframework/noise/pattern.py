@@ -22,6 +22,7 @@ class NoisePattern:
     cipher_function: str  # Cipher function name (e.g., "ChaChaPoly", "AESGCM")
     hash_function: str  # Hash function name (e.g., "SHA256", "BLAKE2b")
     psk_modifier: Optional[str] = None  # PSK modifier (e.g., "psk0", "psk2", "psk3")
+    fallback_modifier: Optional[str] = None  # Fallback modifier (e.g., "fallback")
 
 
 # Supported handshake patterns (fundamental and interactive)
@@ -52,13 +53,16 @@ SUPPORTED_HASHES = {"SHA256", "SHA512", "BLAKE2s", "BLAKE2b"}
 # Supported PSK modifiers
 SUPPORTED_PSK_MODIFIERS = {"psk0", "psk1", "psk2", "psk3", "psk4"}
 
+# Supported fallback modifiers
+SUPPORTED_FALLBACK_MODIFIERS = {"fallback"}
+
 
 def parse_pattern(pattern_string: str) -> NoisePattern:
     """
     Parse a Noise protocol pattern string.
 
     Args:
-        pattern_string: Pattern string (e.g., "Noise_XX_25519_ChaChaPoly_SHA256" or "Noise_XXpsk3_25519_ChaChaPoly_SHA256")
+        pattern_string: Pattern string (e.g., "Noise_XX_25519_ChaChaPoly_SHA256", "Noise_XXpsk3_25519_ChaChaPoly_SHA256", or "Noise_XXfallback_25519_ChaChaPoly_SHA256")
 
     Returns:
         Parsed NoisePattern
@@ -66,21 +70,31 @@ def parse_pattern(pattern_string: str) -> NoisePattern:
     Raises:
         ValueError: If pattern string is invalid or contains unsupported primitives
     """
-    # Pattern format: Noise_PATTERN[pskN]_DH_CIPHER_HASH
-    # where [pskN] is optional and N is 0-4
-    pattern_regex = r"^Noise_([A-Z]{2}(?:psk[0-4])?)_(\w+)_(\w+)_(\w+)$"
+    # Pattern format: Noise_PATTERN[pskN][fallback]_DH_CIPHER_HASH
+    # where [pskN] is optional and N is 0-4, and [fallback] is optional
+    # Examples: Noise_XX_25519_ChaChaPoly_SHA256, Noise_XXfallback_25519_ChaChaPoly_SHA256, Noise_XXpsk3_25519_ChaChaPoly_SHA256
+    pattern_regex = r"^Noise_([A-Z]{2}(?:psk[0-4])?(?:fallback)?)_(\w+)_(\w+)_(\w+)$"
     match = re.match(pattern_regex, pattern_string)
 
     if not match:
         raise UnsupportedPatternError(
             f"Invalid pattern string format: '{pattern_string}'. "
-            f"Expected format: Noise_PATTERN[pskN]_DH_CIPHER_HASH (e.g., Noise_XX_25519_ChaChaPoly_SHA256 or Noise_XXpsk3_25519_ChaChaPoly_SHA256)"
+            f"Expected format: Noise_PATTERN[pskN][fallback]_DH_CIPHER_HASH (e.g., Noise_XX_25519_ChaChaPoly_SHA256, Noise_XXfallback_25519_ChaChaPoly_SHA256, or Noise_XXpsk3_25519_ChaChaPoly_SHA256)"
         )
 
     handshake_full, dh, cipher, hash_func = match.groups()
     
-    # Split handshake pattern and PSK modifier
+    # Split handshake pattern, PSK modifier, and fallback modifier
     psk_modifier = None
+    fallback_modifier = None
+    
+    # Check for fallback modifier first
+    if "fallback" in handshake_full:
+        fallback_modifier = "fallback"
+        # Remove "fallback" from handshake_full to continue parsing
+        handshake_full = handshake_full.replace("fallback", "")
+    
+    # Check for PSK modifier
     if "psk" in handshake_full:
         # Extract base pattern and PSK modifier (e.g., "XXpsk3" -> "XX", "psk3")
         handshake = handshake_full[:2]  # First two characters (XX, IK, NN, etc.)
@@ -105,6 +119,16 @@ def parse_pattern(pattern_string: str) -> NoisePattern:
                 f"Unsupported PSK modifier: '{psk_modifier}' in pattern '{pattern_string}'. "
                 f"Supported PSK modifiers: {supported}. "
                 f"PSK modifier indicates when the pre-shared key is mixed into the handshake."
+            )
+    
+    # Validate fallback modifier if present
+    if fallback_modifier is not None:
+        if fallback_modifier not in SUPPORTED_FALLBACK_MODIFIERS:
+            supported = ', '.join(sorted(SUPPORTED_FALLBACK_MODIFIERS))
+            raise UnsupportedPatternError(
+                f"Unsupported fallback modifier: '{fallback_modifier}' in pattern '{pattern_string}'. "
+                f"Supported fallback modifiers: {supported}. "
+                f"Fallback modifier converts Alice-initiated pattern to Bob-initiated pattern for fallback handshakes."
             )
 
     # Validate DH function
@@ -140,23 +164,25 @@ def parse_pattern(pattern_string: str) -> NoisePattern:
         cipher_function=cipher,
         hash_function=hash_func,
         psk_modifier=psk_modifier,
+        fallback_modifier=fallback_modifier,
     )
 
 
-def get_pattern_tokens(handshake_pattern: str, psk_modifier: Optional[str] = None) -> Tuple[List[str], List[str], List[str]]:
+def get_pattern_tokens(handshake_pattern: str, psk_modifier: Optional[str] = None, fallback_modifier: Optional[str] = None) -> Tuple[List[str], List[str], List[str]]:
     """
     Get the message token sequence for a handshake pattern.
 
     Args:
         handshake_pattern: Handshake pattern name (e.g., "XX", "IK")
         psk_modifier: Optional PSK modifier (e.g., "psk0", "psk2", "psk3")
+        fallback_modifier: Optional fallback modifier (e.g., "fallback")
 
     Returns:
         Tuple of (pre_messages_initiator, pre_messages_responder, message_patterns)
         where message_patterns is a list of token strings for each message
 
     Raises:
-        ValueError: If handshake pattern is not supported
+        ValueError: If handshake pattern is not supported or fallback is applied to an invalid pattern
     """
     # Pattern definitions from Noise spec
     # Format: (initiator_pre, responder_pre, message_tokens)
@@ -184,13 +210,39 @@ def get_pattern_tokens(handshake_pattern: str, psk_modifier: Optional[str] = Non
 
     initiator_pre, responder_pre, messages = patterns[handshake_pattern]
     
+    # Make copies to avoid modifying the originals
+    initiator_pre = list(initiator_pre)
+    responder_pre = list(responder_pre)
+    messages = list(messages)
+    
+    # Apply fallback modifier if present
+    # Fallback converts Alice's (initiator's) first message to a pre-message for Bob (responder)
+    # This effectively converts an Alice-initiated pattern to a Bob-initiated pattern
+    if fallback_modifier == "fallback":
+        if not messages:
+            raise UnsupportedPatternError(
+                f"Cannot apply fallback modifier to pattern '{handshake_pattern}': no messages to convert"
+            )
+        
+        # Check if Alice's first message can be interpreted as a pre-message
+        # Valid pre-message patterns are: "e", "s", or "e, s"
+        first_message = messages[0]
+        if first_message not in ["e", "s", "e, s"]:
+            raise UnsupportedPatternError(
+                f"Cannot apply fallback modifier to pattern '{handshake_pattern}': "
+                f"first message '{first_message}' cannot be converted to a pre-message. "
+                f"Fallback can only be applied to patterns where Alice's first message is 'e', 's', or 'e, s'."
+            )
+        
+        # Move first message to initiator pre-messages
+        initiator_pre.extend(first_message.split(", "))
+        # Remove first message from messages
+        messages = messages[1:]
+    
     # Insert PSK token if PSK modifier is present
     if psk_modifier:
         # Extract PSK position (e.g., "psk2" -> 2)
         psk_position = int(psk_modifier[3])  # Get the number from "pskN"
-        
-        # Make a copy of messages list
-        messages = list(messages)
         
         # PSK token is added at the specified position
         # psk0 means before first message, psk1 after first message, etc.

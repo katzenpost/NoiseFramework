@@ -675,6 +675,72 @@ handshake.generate_static_keypair()
 # Keys are now set internally and ready to use
 ```
 
+##### `start_fallback(remote_ephemeral_public_key)`
+
+```python
+start_fallback(remote_ephemeral_public_key: bytes) -> None
+```
+
+Initiate a fallback handshake (responder only). Called when the initiator's first message cannot be decrypted (e.g., IK message with wrong static key or outdated PSK). Implements the Noise Pipes protocol.
+
+**Fallback Mechanics:**
+- Preserves initiator's ephemeral public key from failed message
+- Switches pattern to fallback variant (e.g., XX → XXfallback)
+- Re-initializes symmetric state with fallback protocol name
+- Processes initiator's ephemeral as pre-message
+- Responder becomes effective initiator (sends first message)
+
+**Parameters:**
+- `remote_ephemeral_public_key` (bytes): Initiator's ephemeral public key extracted from failed message (32 bytes for Curve25519)
+
+**Raises:**
+- `RoleNotSetError`: If not configured as responder (only responder can fallback)
+- `HandshakeCompleteError`: If handshake is already complete
+- `ValidationError`: If ephemeral key size is invalid or pattern cannot be converted to fallback
+
+**Valid Fallback Patterns:**
+- `XX` → `XXfallback` (first message: "e")
+- `NN` → `NNfallback` (first message: "e")
+- `IK` → `XXfallback` (IK first message contains DH operations, cannot directly use fallback)
+- `NK` → `XXfallback` (NK first message contains DH operations, cannot directly use fallback)
+
+**Example (Noise Pipes - IK → XXfallback):**
+```python
+# Bob (responder) prepares for fallback
+bob = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+bob.set_as_responder()
+bob.generate_static_keypair()
+bob.initialize()
+
+# Alice sends IK message (fails decryption due to wrong key)
+# Extract Alice's ephemeral key from failed message
+alice_ephemeral = failed_ik_msg[:32]  # First 32 bytes
+
+# Bob initiates fallback to XXfallback
+bob.start_fallback(alice_ephemeral)
+
+# Bob now sends first XXfallback message (role reversal)
+fallback_msg1 = bob.write_message(b"Fallback initiated")
+```
+
+**Coordinating Fallback (Both Parties):**
+```python
+# Alice must also switch to XXfallback
+alice_fallback = NoiseHandshake("Noise_XXfallback_25519_ChaChaPoly_SHA256")
+alice_fallback.set_as_initiator()
+alice_fallback.set_static_keypair(alice.static_private, alice.static_public)
+
+# Reuse Alice's ephemeral keys (XXfallback uses as pre-message)
+alice_fallback.ephemeral_private = alice.ephemeral_private
+alice_fallback.ephemeral_public = alice.ephemeral_public
+alice_fallback.initialize()
+
+# Continue handshake normally
+payload1 = alice_fallback.read_message(fallback_msg1)
+```
+
+**See:** [`examples/fallback_example.py`](../examples/fallback_example.py) for complete IK → XXfallback demonstration.
+
 ##### `to_transport()`
 
 ```python
@@ -1500,6 +1566,40 @@ Read a handshake message (async).
 
 ```python
 payload = await handshake.read_message(msg1)
+```
+
+##### `await start_fallback(remote_ephemeral_public_key: bytes) -> None`
+
+Initiate a fallback handshake asynchronously (responder only). Async version of `NoiseHandshake.start_fallback()`.
+
+```python
+await handshake.start_fallback(alice_ephemeral)
+```
+
+**Parameters:**
+- `remote_ephemeral_public_key` (bytes): Initiator's ephemeral public key from failed message
+
+**Raises:**
+- `RoleNotSetError`: If not configured as responder
+- `HandshakeCompleteError`: If handshake already complete
+- `ValidationError`: If key size invalid or pattern cannot fallback
+
+**Example:**
+```python
+# Async fallback
+bob = AsyncNoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+await bob.set_as_responder()
+await bob.generate_static_keypair()
+await bob.initialize()
+
+# Extract ephemeral from failed message
+alice_ephemeral = failed_msg[:32]
+
+# Initiate fallback
+await bob.start_fallback(alice_ephemeral)
+
+# Continue with fallback handshake
+fallback_msg1 = await bob.write_message(b"Fallback")
 ```
 
 ##### `await to_transport() -> AsyncNoiseTransport`

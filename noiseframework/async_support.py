@@ -144,6 +144,28 @@ class AsyncNoiseHandshake:
             self._handshake.get_handshake_hash
         )
     
+    async def start_fallback(self, remote_ephemeral_public_key: bytes) -> None:
+        """
+        Initiate a fallback handshake (async).
+        
+        This method is called by the responder when it cannot decrypt the initiator's 
+        first message. It converts the current pattern to a fallback pattern.
+        
+        Args:
+            remote_ephemeral_public_key: Alice's ephemeral public key from the failed message
+            
+        Raises:
+            RoleNotSetError: If role is not set as responder
+            ValidationError: If fallback cannot be applied to this pattern
+            HandshakeCompleteError: If handshake is already complete
+        """
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            self._executor,
+            self._handshake.start_fallback,
+            remote_ephemeral_public_key
+        )
+    
     @property
     def is_complete(self) -> bool:
         """Check if handshake is complete (sync property)."""

@@ -8,6 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Fallback Pattern Support for graceful handshake degradation**:
+  - Implements Noise Protocol Framework Section 10.2 fallback patterns
+  - Extended pattern parser to support `fallback` modifier: `Noise_XXfallback_25519_ChaChaPoly_SHA256`
+  - Added `NoiseHandshake.start_fallback(remote_ephemeral_public_key: bytes)` method
+  - Responder-only operation: triggered when initiator's first message cannot be decrypted
+  - Preserves initiator's ephemeral key, switches pattern, re-initializes symmetric state
+  - Fallback transformation: moves initiator's first message to pre-message (e.g., XX → XXfallback)
+  - Fallback validation: first message must be "e", "s", or "e, s" (no DH operations)
+  - Role reversal: responder becomes effective initiator in fallback pattern (sends first)
+  - Custom turn-checking logic for fallback patterns (`is_fallback` flag)
+  - Extended `_process_pre_messages()` to handle ephemeral ("e") pre-messages
+  - **Noise Pipes protocol**: IK → XXfallback (when wrong static key or outdated PSK)
+  - Async fallback support: `AsyncNoiseHandshake.start_fallback(remote_ephemeral_public_key: bytes)`
+  - Error handling: validates responder role, handshake not complete, key size matching
+- `examples/fallback_example.py` demonstrating Noise Pipes protocol:
+  - Alice attempts IK handshake with wrong/outdated Bob static key
+  - Bob detects decryption failure and extracts Alice's ephemeral key
+  - Bob initiates fallback to XXfallback using `start_fallback()`
+  - Alice switches to XXfallback and reuses ephemeral keys
+  - Both complete XXfallback handshake and establish transport channels
+  - Educational comments explaining fallback mechanics and use cases
+- `tests/test_fallback.py` with 21 comprehensive tests (100% pass rate):
+  - Fallback pattern parsing: XXfallback, IKfallback, NKfallback, invalid modifiers (5 tests)
+  - Token transformation: XX → XXfallback, validation that IK/NK cannot directly use fallback (5 tests)
+  - Handshake setup: responder-only, completion checks, key validation, ephemeral preservation (6 tests)
+  - Full handshakes: IK→XXfallback (Noise Pipes), normal XX comparison (2 tests)
+  - Async support: async start_fallback() (1 test)
+  - Error cases: invalid patterns, multiple fallback calls (2 tests)
 - **Pre-Shared Key (PSK) support for quantum-resistant patterns**:
   - Extended pattern parser to support PSK modifiers: `psk0`, `psk1`, `psk2`, `psk3`, `psk4`
   - PSK patterns format: `Noise_XXpsk3_25519_ChaChaPoly_SHA256` (base pattern + PSK modifier)
