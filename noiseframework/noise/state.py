@@ -4,6 +4,7 @@ Symmetric state and cipher state for Noise Protocol.
 Implements the SymmetricState and CipherState objects from the Noise spec.
 """
 
+import logging
 from typing import Optional, Tuple
 from noiseframework.crypto.cipher import CipherFunction
 from noiseframework.crypto.hash import HashFunction
@@ -16,16 +17,21 @@ class CipherState:
     Manages encryption/decryption with a key and nonce counter.
     """
 
-    def __init__(self, cipher: CipherFunction) -> None:
+    def __init__(
+        self, cipher: CipherFunction, logger: Optional[logging.Logger] = None
+    ) -> None:
         """
         Initialize CipherState.
 
         Args:
             cipher: AEAD cipher function to use
+            logger: Optional logger instance for cipher operations
         """
         self.cipher = cipher
         self.key: Optional[bytes] = None
         self.nonce: int = 0
+        self.logger = logger or logging.getLogger(f"{__name__}.CipherState")
+        self.logger.debug("CipherState initialized")
 
     def initialize_key(self, key: bytes) -> None:
         """
@@ -38,6 +44,7 @@ class CipherState:
             raise ValueError(f"Key must be 32 bytes, got {len(key)}")
         self.key = key
         self.nonce = 0
+        self.logger.debug("Cipher key initialized (nonce reset to 0)")
 
     def has_key(self) -> bool:
         """Check if a key is set."""
@@ -107,18 +114,26 @@ class SymmetricState:
     Manages hashing and encryption during the handshake.
     """
 
-    def __init__(self, hash_func: HashFunction, cipher: CipherFunction) -> None:
+    def __init__(
+        self,
+        hash_func: HashFunction,
+        cipher: CipherFunction,
+        logger: Optional[logging.Logger] = None,
+    ) -> None:
         """
         Initialize SymmetricState.
 
         Args:
             hash_func: Hash function to use
             cipher: AEAD cipher function to use
+            logger: Optional logger instance for symmetric operations
         """
         self.hash_func = hash_func
-        self.cipher_state = CipherState(cipher)
+        self.logger = logger or logging.getLogger(f"{__name__}.SymmetricState")
+        self.cipher_state = CipherState(cipher, logger=self.logger)
         self.chaining_key: bytes = b""
         self.h: bytes = b""  # Handshake hash
+        self.logger.debug("SymmetricState initialized")
 
     def initialize_symmetric(self, protocol_name: bytes) -> None:
         """
@@ -144,6 +159,7 @@ class SymmetricState:
         Args:
             input_key_material: Key material to mix (e.g., DH output)
         """
+        self.logger.debug(f"Mixing key material ({len(input_key_material)} bytes)")
         ck, temp_key = self.hash_func.hkdf(self.chaining_key, input_key_material, 2)
         self.chaining_key = ck
         self.cipher_state.initialize_key(temp_key)

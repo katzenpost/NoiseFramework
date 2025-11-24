@@ -66,7 +66,7 @@ class NoiseHandshake:
         )
 
         # Initialize symmetric state
-        self.symmetric = SymmetricState(self.hash, self.cipher)
+        self.symmetric = SymmetricState(self.hash, self.cipher, logger=self.logger)
 
         # Role and state
         self.role: Optional[Role] = None
@@ -431,13 +431,17 @@ class NoiseHandshake:
             ValueError: If handshake is not complete
         """
         if not self.handshake_complete:
+            self.logger.error("Attempted to create transport ciphers before handshake completion")
             raise ValueError("Handshake not yet complete")
 
+        self.logger.debug("Splitting handshake state into transport ciphers")
         c1, c2 = self.symmetric.split()
 
         # Initiator sends with c1, receives with c2
         # Responder sends with c2, receives with c1
         if self.role == Role.INITIATOR:
+            self.logger.info("Created transport ciphers (initiator: send=c1, receive=c2)")
             return c1, c2
         else:
+            self.logger.info("Created transport ciphers (responder: send=c2, receive=c1)")
             return c2, c1
