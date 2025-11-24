@@ -7,7 +7,7 @@ Parses and validates Noise protocol pattern strings like:
 """
 
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from dataclasses import dataclass
 from noiseframework.exceptions import UnsupportedPatternError, UnsupportedPrimitiveError
 
@@ -21,6 +21,7 @@ class NoisePattern:
     dh_function: str  # DH function name (e.g., "25519", "448")
     cipher_function: str  # Cipher function name (e.g., "ChaChaPoly", "AESGCM")
     hash_function: str  # Hash function name (e.g., "SHA256", "BLAKE2b")
+    psk_modifier: Optional[str] = None  # PSK modifier (e.g., "psk0", "psk2", "psk3")
 
 
 # Supported handshake patterns (fundamental and interactive)
@@ -48,13 +49,16 @@ SUPPORTED_CIPHERS = {"ChaChaPoly", "AESGCM"}
 # Supported hash functions
 SUPPORTED_HASHES = {"SHA256", "SHA512", "BLAKE2s", "BLAKE2b"}
 
+# Supported PSK modifiers
+SUPPORTED_PSK_MODIFIERS = {"psk0", "psk1", "psk2", "psk3", "psk4"}
+
 
 def parse_pattern(pattern_string: str) -> NoisePattern:
     """
     Parse a Noise protocol pattern string.
 
     Args:
-        pattern_string: Pattern string (e.g., "Noise_XX_25519_ChaChaPoly_SHA256")
+        pattern_string: Pattern string (e.g., "Noise_XX_25519_ChaChaPoly_SHA256" or "Noise_XXpsk3_25519_ChaChaPoly_SHA256")
 
     Returns:
         Parsed NoisePattern
@@ -62,17 +66,27 @@ def parse_pattern(pattern_string: str) -> NoisePattern:
     Raises:
         ValueError: If pattern string is invalid or contains unsupported primitives
     """
-    # Pattern format: Noise_PATTERN_DH_CIPHER_HASH
-    pattern_regex = r"^Noise_([A-Z]{2})_(\w+)_(\w+)_(\w+)$"
+    # Pattern format: Noise_PATTERN[pskN]_DH_CIPHER_HASH
+    # where [pskN] is optional and N is 0-4
+    pattern_regex = r"^Noise_([A-Z]{2}(?:psk[0-4])?)_(\w+)_(\w+)_(\w+)$"
     match = re.match(pattern_regex, pattern_string)
 
     if not match:
         raise UnsupportedPatternError(
             f"Invalid pattern string format: '{pattern_string}'. "
-            f"Expected format: Noise_PATTERN_DH_CIPHER_HASH (e.g., Noise_XX_25519_ChaChaPoly_SHA256)"
+            f"Expected format: Noise_PATTERN[pskN]_DH_CIPHER_HASH (e.g., Noise_XX_25519_ChaChaPoly_SHA256 or Noise_XXpsk3_25519_ChaChaPoly_SHA256)"
         )
 
-    handshake, dh, cipher, hash_func = match.groups()
+    handshake_full, dh, cipher, hash_func = match.groups()
+    
+    # Split handshake pattern and PSK modifier
+    psk_modifier = None
+    if "psk" in handshake_full:
+        # Extract base pattern and PSK modifier (e.g., "XXpsk3" -> "XX", "psk3")
+        handshake = handshake_full[:2]  # First two characters (XX, IK, NN, etc.)
+        psk_modifier = handshake_full[2:]  # Remaining part (psk0, psk2, etc.)
+    else:
+        handshake = handshake_full
 
     # Validate handshake pattern
     if handshake not in SUPPORTED_PATTERNS:
@@ -82,6 +96,16 @@ def parse_pattern(pattern_string: str) -> NoisePattern:
             f"Supported patterns: {supported}. "
             f"Check for typos in your pattern name."
         )
+    
+    # Validate PSK modifier if present
+    if psk_modifier is not None:
+        if psk_modifier not in SUPPORTED_PSK_MODIFIERS:
+            supported = ', '.join(sorted(SUPPORTED_PSK_MODIFIERS))
+            raise UnsupportedPatternError(
+                f"Unsupported PSK modifier: '{psk_modifier}' in pattern '{pattern_string}'. "
+                f"Supported PSK modifiers: {supported}. "
+                f"PSK modifier indicates when the pre-shared key is mixed into the handshake."
+            )
 
     # Validate DH function
     if dh not in SUPPORTED_DH:
@@ -115,15 +139,17 @@ def parse_pattern(pattern_string: str) -> NoisePattern:
         dh_function=dh,
         cipher_function=cipher,
         hash_function=hash_func,
+        psk_modifier=psk_modifier,
     )
 
 
-def get_pattern_tokens(handshake_pattern: str) -> Tuple[List[str], List[str], List[str]]:
+def get_pattern_tokens(handshake_pattern: str, psk_modifier: Optional[str] = None) -> Tuple[List[str], List[str], List[str]]:
     """
     Get the message token sequence for a handshake pattern.
 
     Args:
         handshake_pattern: Handshake pattern name (e.g., "XX", "IK")
+        psk_modifier: Optional PSK modifier (e.g., "psk0", "psk2", "psk3")
 
     Returns:
         Tuple of (pre_messages_initiator, pre_messages_responder, message_patterns)
@@ -157,6 +183,29 @@ def get_pattern_tokens(handshake_pattern: str) -> Tuple[List[str], List[str], Li
         )
 
     initiator_pre, responder_pre, messages = patterns[handshake_pattern]
+    
+    # Insert PSK token if PSK modifier is present
+    if psk_modifier:
+        # Extract PSK position (e.g., "psk2" -> 2)
+        psk_position = int(psk_modifier[3])  # Get the number from "pskN"
+        
+        # Make a copy of messages list
+        messages = list(messages)
+        
+        # PSK token is added at the specified position
+        # psk0 means before first message, psk1 after first message, etc.
+        if psk_position == 0:
+            # Add "psk" token to the beginning of first message
+            if messages:
+                messages[0] = "psk, " + messages[0]
+        elif psk_position <= len(messages):
+            # Add "psk" token to the end of specified message
+            messages[psk_position - 1] = messages[psk_position - 1] + ", psk"
+        else:
+            # psk position is beyond the number of messages
+            # This shouldn't happen with valid patterns, but handle gracefully
+            pass
+    
     return initiator_pre, responder_pre, messages
 
 

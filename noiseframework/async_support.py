@@ -86,6 +86,15 @@ class AsyncNoiseHandshake:
             public_key
         )
     
+    async def set_psk(self, psk: bytes) -> None:
+        """Set pre-shared key for PSK patterns (async)."""
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            self._executor,
+            self._handshake.set_psk,
+            psk
+        )
+    
     async def initialize(self) -> None:
         """Initialize the handshake state (async)."""
         loop = asyncio.get_event_loop()

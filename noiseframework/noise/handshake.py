@@ -70,7 +70,7 @@ class NoiseHandshake:
 
         # Get handshake message patterns
         self.initiator_pre, self.responder_pre, self.message_patterns = get_pattern_tokens(
-            self.pattern.handshake_pattern
+            self.pattern.handshake_pattern, self.pattern.psk_modifier
         )
 
         # Initialize symmetric state
@@ -90,6 +90,9 @@ class NoiseHandshake:
         # Remote keys
         self.remote_static_public: Optional[bytes] = None
         self.remote_ephemeral_public: Optional[bytes] = None
+        
+        # Pre-shared key (for PSK patterns)
+        self.psk: Optional[bytes] = None
 
     def set_as_initiator(self) -> None:
         """Set this handshake as the initiator."""
@@ -169,6 +172,32 @@ class NoiseHandshake:
         self.remote_static_public = public_key
         self.logger.debug(f"Remote static public key set (key: {public_key.hex()[:16]}...)")
 
+    def set_psk(self, psk: bytes) -> None:
+        """
+        Set pre-shared key for PSK patterns.
+
+        Args:
+            psk: Pre-shared key (32 bytes)
+
+        Raises:
+            ValidationError: If PSK size is not 32 bytes or pattern doesn't use PSK
+        """
+        if self.pattern.psk_modifier is None:
+            raise ValidationError(
+                f"Cannot set PSK: pattern '{self.pattern.name}' does not use a PSK modifier. "
+                f"Use a PSK pattern like Noise_XXpsk3_25519_ChaChaPoly_SHA256 instead."
+            )
+        
+        if len(psk) != 32:
+            self.logger.error(f"Invalid PSK size: expected 32 bytes, got {len(psk)}")
+            raise ValidationError(
+                f"Invalid PSK size: expected 32 bytes, got {len(psk)} bytes. "
+                f"PSK must be exactly 32 bytes for all Noise patterns."
+            )
+        
+        self.psk = psk
+        self.logger.debug("Pre-shared key set (32 bytes)")
+
     def initialize(self) -> None:
         """
         Initialize the handshake.
@@ -203,6 +232,14 @@ class NoiseHandshake:
                     f"Pattern {self.pattern.handshake_pattern} requires static keypair for responder. "
                     f"Call generate_static_keypair() or set_static_keypair() before initialize()."
                 )
+        
+        # Check for PSK requirement
+        if self.pattern.psk_modifier and not self.psk:
+            self.logger.error("PSK pattern requires pre-shared key but none provided")
+            raise MissingKeyError(
+                f"Pattern {self.pattern.name} requires a pre-shared key (PSK). "
+                f"Call set_psk() with a 32-byte key before initialize()."
+            )
 
         # Initialize symmetric state with protocol name
         protocol_name = self.pattern.name.encode("ascii")
@@ -352,6 +389,15 @@ class NoiseHandshake:
                     )
                 dh_output = self.dh.dh(self.static_private, self.remote_static_public)
                 self.symmetric.mix_key(dh_output)
+            elif token == "psk":
+                # Mix pre-shared key
+                if not self.psk:
+                    raise MissingKeyError(
+                        f"Token 'psk' in message {self.message_index + 1} requires pre-shared key. "
+                        f"Call set_psk() with a 32-byte key before initialize()."
+                    )
+                self.symmetric.mix_key_and_hash(self.psk)
+                self.logger.debug("PSK mixed into handshake state")
 
         # Encrypt payload
         encrypted_payload = self.symmetric.encrypt_and_hash(payload)
@@ -474,6 +520,15 @@ class NoiseHandshake:
                     )
                 dh_output = self.dh.dh(self.static_private, self.remote_static_public)
                 self.symmetric.mix_key(dh_output)
+            elif token == "psk":
+                # Mix pre-shared key
+                if not self.psk:
+                    raise MissingKeyError(
+                        f"Token 'psk' in message {self.message_index + 1} requires pre-shared key. "
+                        f"Call set_psk() with a 32-byte key before initialize()."
+                    )
+                self.symmetric.mix_key_and_hash(self.psk)
+                self.logger.debug("PSK mixed into handshake state")
 
         # Decrypt payload
         encrypted_payload = message[offset:]
