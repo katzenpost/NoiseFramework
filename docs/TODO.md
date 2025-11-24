@@ -49,40 +49,101 @@ This document tracks implementation tasks for NoiseFramework enhancements (versi
 
 ---
 
-### 2. ⏳ **Logging Support** [TODO]
+### 2. ✅ **Logging Support** [DONE]
 
 **Goal**: Add comprehensive logging throughout the library for debugging and monitoring.
 
 **Tasks**:
-- [ ] Add logging to `NoiseHandshake` class
-- [ ] Add logging to `NoiseTransport` class
-- [ ] Add logging to crypto operations (optional, debug level)
-- [ ] Add logging configuration examples
-- [ ] Document logging levels and what they show
-- [ ] Add tests that verify logging output
+- [x] Add logging to `NoiseHandshake` class
+- [x] Add logging to `NoiseTransport` class
+- [x] Add logging to crypto operations (optional, debug level)
+- [x] Add logging configuration examples
+- [x] Document logging levels and what they show
+- [x] Add tests that verify logging output
 
 **Target Files**:
-- Modify: `noiseframework/noise/handshake.py`
-- Modify: `noiseframework/transport/transport.py`
-- Modify: `noiseframework/noise/state.py`
+- Modified: `noiseframework/noise/handshake.py`
+- Modified: `noiseframework/transport/transport.py`
+- Modified: `noiseframework/noise/state.py`
 - New: `examples/logging_example.py`
-- Update: `docs/API.md`
+- New: `tests/test_logging.py`
+- Update: `docs/API.md` (pending)
 
-**Logging Levels to Implement**:
-- `DEBUG`: Detailed protocol steps, message sizes, nonces
-- `INFO`: Handshake completion, transport creation
-- `WARNING`: Approaching nonce limits, deprecated usage
-- `ERROR`: Authentication failures, invalid states
+**Logging Levels Implemented**:
+- `DEBUG`: Detailed protocol steps, message sizes, nonces, tokens, key operations
+- `INFO`: Role setting, handshake completion, transport creation, message send/receive
+- `WARNING`: Approaching nonce limits (2^63+)
+- `ERROR`: Authentication failures, invalid states, validation errors
 
 **Implementation Notes**:
+
+**Logger Parameters** (added to all main classes):
+```python
+# NoiseHandshake
+NoiseHandshake(pattern: str, logger: Optional[logging.Logger] = None)
+# Default logger: logging.getLogger("noiseframework.noise.handshake.NoiseHandshake")
+
+# NoiseTransport
+NoiseTransport(send_cipher, receive_cipher, logger: Optional[logging.Logger] = None)
+# Default logger: logging.getLogger("noiseframework.transport.transport.NoiseTransport")
+
+# SymmetricState
+SymmetricState(hash_func, cipher, logger: Optional[logging.Logger] = None)
+# Default logger: logging.getLogger("noiseframework.noise.state.SymmetricState")
+
+# CipherState
+CipherState(cipher, logger: Optional[logging.Logger] = None)
+# Default logger: logging.getLogger("noiseframework.noise.state.CipherState")
 ```
-[When completed, document here:]
-- How to enable logging (example code)
-- What each log level shows
-- Default logger names
-- How to configure per-class logging
-- Example log output
+
+**Basic Usage**:
+```python
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)-8s] %(name)s: %(message)s"
+)
+
+# Use NoiseFramework normally - logging happens automatically
+handshake = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+handshake.set_as_initiator()  # Logs: "Set role to INITIATOR"
+handshake.initialize()        # Logs: "Handshake initialized"
 ```
+
+**Custom Logger**:
+```python
+# Create custom logger
+custom_logger = logging.getLogger("myapp.noise")
+custom_logger.setLevel(logging.DEBUG)
+
+# Pass to NoiseHandshake
+handshake = NoiseHandshake(pattern, logger=custom_logger)
+```
+
+**What Gets Logged**:
+
+- **DEBUG Level**: Token processing, message sizes, nonce values, key operations, state initialization
+- **INFO Level**: Role changes, handshake completion, transport creation, successful message operations
+- **WARNING Level**: Nonce approaching limit (>= 2^63, warns about 2^64 overflow)
+- **ERROR Level**: Invalid state transitions, validation failures (always logged before raising exceptions)
+
+**Example Log Output**:
+```
+2025-11-24 15:30:01 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Set role to INITIATOR
+2025-11-24 15:30:01 [DEBUG   ] noiseframework.noise.handshake.NoiseHandshake: Generating static keypair (Curve25519)
+2025-11-24 15:30:01 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Generated static keypair
+2025-11-24 15:30:01 [DEBUG   ] noiseframework.noise.handshake.NoiseHandshake: Initializing handshake (pattern=Noise_XX_25519_ChaChaPoly_SHA256)
+2025-11-24 15:30:01 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Handshake initialized
+2025-11-24 15:30:01 [DEBUG   ] noiseframework.noise.handshake.NoiseHandshake: Writing handshake message 1 (payload=0 bytes)
+2025-11-24 15:30:01 [DEBUG   ] noiseframework.noise.handshake.NoiseHandshake: Processing tokens: ['e']
+2025-11-24 15:30:01 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Sent handshake message 1 (ciphertext=32 bytes)
+```
+
+**Performance Impact**: Minimal - logging is only performed when handlers are configured. Default Python logging has negligible overhead when no handlers are attached.
+
+**Test Coverage**: 21 new tests in `tests/test_logging.py` covering all log levels, custom loggers, and different scenarios.
 
 ---
 
@@ -276,10 +337,11 @@ class NoiseSession:
 
 ## 📊 **Progress Tracking**
 
-**Completed**: 0 / 7
+**Completed**: 1 / 7 (14%)
 **In Progress**: 0
-**Not Started**: 7
+**Not Started**: 6
 
+**Latest Completion**: Logging Support (November 24, 2025)
 **Estimated Release**: TBD
 
 ---
