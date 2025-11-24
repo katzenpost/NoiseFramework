@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Async/await support for modern Python asyncio applications:
+  - `AsyncNoiseHandshake` class wrapping `NoiseHandshake` with async methods
+  - `AsyncNoiseTransport` class wrapping `NoiseTransport` for async encrypted communication
+  - `AsyncFramedReader` for reading framed messages from `asyncio.StreamReader`
+  - `AsyncFramedWriter` for writing framed messages to `asyncio.StreamWriter`
+  - Async convenience functions: `async_read_framed_message()` and `async_write_framed_message()`
+  - All async operations use `asyncio.run_in_executor()` to avoid blocking event loop
+  - Compatible with asyncio streams (`StreamReader`, `StreamWriter`)
+  - Same security guarantees as synchronous version
+- `noiseframework/async_support.py` module (~450 lines) with complete async implementation
+- `examples/async_tcp_example.py` demonstrating async TCP server/client with Noise XX handshake
+- `tests/test_async.py` with 21 comprehensive async tests (100% pass rate)
+- Exported 6 async utilities from main package: `AsyncNoiseHandshake`, `AsyncNoiseTransport`, `AsyncFramedReader`, `AsyncFramedWriter`, `async_read_framed_message`, `async_write_framed_message`
+- Complete async API documentation in `docs/API.md` with usage examples
+- Async usage section in `README.md` with TCP server/client examples
 - Comprehensive logging support throughout the framework:
   - Added optional `logger` parameter to `NoiseHandshake`, `NoiseTransport`, `CipherState`, and `SymmetricState` classes
   - Default logger uses module + class name pattern (e.g., `noiseframework.noise.handshake.NoiseHandshake`)

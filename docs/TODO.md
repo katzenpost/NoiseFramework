@@ -2,7 +2,7 @@
 
 This document tracks implementation tasks for NoiseFramework enhancements (version 1.3.0 - Production Readiness).
 
-**Progress**: 2/7 complete (29%)
+**Progress**: 3/7 complete (43%)
 
 ---
 
@@ -22,32 +22,219 @@ This document tracks implementation tasks for NoiseFramework enhancements (versi
 
 ## 🎯 HIGH PRIORITY - Production Readiness
 
-### 1. ⏳ **Async/Await Support** [TODO]
+### 1. ✅ **Async/Await Support** [DONE]
 
 **Goal**: Add async support for modern Python applications using asyncio.
 
 **Tasks**:
-- [ ] Create `noiseframework/async_support.py` module
-- [ ] Implement `AsyncNoiseHandshake` class wrapping sync operations
-- [ ] Implement `AsyncNoiseTransport` class
-- [ ] Add async examples
-- [ ] Add tests for async functionality
-- [ ] Update documentation
+- [x] Create `noiseframework/async_support.py` module
+- [x] Implement `AsyncNoiseHandshake` class wrapping sync operations
+- [x] Implement `AsyncNoiseTransport` class
+- [x] Add async examples
+- [x] Add tests for async functionality
+- [x] Update documentation
 
 **Target Files**:
-- New: `noiseframework/async_support.py`
-- New: `examples/async_tcp_server.py`
-- New: `tests/test_async.py`
+- New: `noiseframework/async_support.py` (~450 lines)
+- New: `examples/async_tcp_example.py` (~300 lines)
+- New: `tests/test_async.py` (21 tests, 100% pass rate)
+- Modified: `noiseframework/__init__.py` (added 6 async exports)
+- Updated: `README.md` (async section added)
+- Updated: `docs/API.md` (complete async API documentation)
+
+**Implementation Strategy**:
+- Uses `asyncio.run_in_executor()` to wrap synchronous operations
+- No blocking calls in event loop
+- Compatible with `asyncio.StreamReader` and `asyncio.StreamWriter`
+- Same security guarantees as synchronous version
 
 **Implementation Notes**:
+
+**Import Statements**:
+```python
+# Main async classes
+from noiseframework import AsyncNoiseHandshake, AsyncNoiseTransport
+
+# Async framing utilities
+from noiseframework import AsyncFramedReader, AsyncFramedWriter
+
+# Async convenience functions
+from noiseframework import async_read_framed_message, async_write_framed_message
 ```
-[When completed, document here:]
-- Exact class names and signatures
-- Import statements users need
-- Example code that works
-- Any limitations or caveats
-- Performance characteristics
+
+**AsyncNoiseHandshake API**:
+```python
+# Constructor (same as sync, but methods are async)
+handshake = AsyncNoiseHandshake(pattern: str, logger: Optional[logging.Logger] = None)
+
+# Async methods (all require await)
+await handshake.set_as_initiator()
+await handshake.set_as_responder()
+await handshake.generate_static_keypair()
+await handshake.set_static_keypair(private_key: bytes, public_key: bytes)
+await handshake.set_remote_static_public_key(public_key: bytes)
+await handshake.initialize()
+msg = await handshake.write_message(payload: bytes = b"")
+payload = await handshake.read_message(message: bytes)
+transport = await handshake.to_transport()  # Returns AsyncNoiseTransport
+h = await handshake.get_handshake_hash()
+
+# Properties (sync access, no await needed)
+is_complete = handshake.is_complete  # bool
+pattern = handshake.pattern  # NoisePattern object
 ```
+
+**AsyncNoiseTransport API**:
+```python
+# Created from AsyncNoiseHandshake.to_transport()
+transport = await handshake.to_transport()
+
+# Async methods
+ciphertext = await transport.send(plaintext: bytes, associated_data: bytes = b"")
+plaintext = await transport.receive(ciphertext: bytes, associated_data: bytes = b"")
+
+# Properties (sync access, no await)
+send_nonce = transport.send_nonce  # int
+receive_nonce = transport.receive_nonce  # int
+```
+
+**AsyncFramedReader API**:
+```python
+# Constructor
+reader = AsyncFramedReader(
+    reader: asyncio.StreamReader,
+    max_message_size: int = 16*1024*1024,  # 16 MB default
+    logger: Optional[logging.Logger] = None
+)
+
+# Async methods
+message = await reader.read_message()  # Returns bytes
+await reader.close()
+
+# Properties
+messages_received = reader.messages_received  # int
+```
+
+**AsyncFramedWriter API**:
+```python
+# Constructor
+writer = AsyncFramedWriter(
+    writer: asyncio.StreamWriter,
+    max_message_size: int = 16*1024*1024,  # 16 MB default
+    logger: Optional[logging.Logger] = None
+)
+
+# Async methods
+await writer.write_message(message: bytes)
+await writer.close()
+
+# Properties
+messages_sent = writer.messages_sent  # int
+```
+
+**Complete Working Example**:
+```python
+import asyncio
+from noiseframework import AsyncNoiseHandshake, AsyncFramedReader, AsyncFramedWriter
+
+async def handle_client(reader, writer):
+    """Server side (responder)."""
+    # Create handshake
+    hs = AsyncNoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+    await hs.set_as_responder()
+    await hs.generate_static_keypair()
+    await hs.initialize()
+    
+    # Create framing
+    framed_reader = AsyncFramedReader(reader)
+    framed_writer = AsyncFramedWriter(writer)
+    
+    # Perform handshake (XX pattern: <- e, <- e, ee, -> s, se, <- s, es)
+    msg1 = await framed_reader.read_message()
+    await hs.read_message(msg1)
+    
+    msg2 = await hs.write_message(b"")
+    await framed_writer.write_message(msg2)
+    
+    msg3 = await framed_reader.read_message()
+    await hs.read_message(msg3)
+    
+    # Switch to transport mode
+    transport = await hs.to_transport()
+    
+    # Receive encrypted message
+    ciphertext = await framed_reader.read_message()
+    plaintext = await transport.receive(ciphertext)
+    print(f"Server received: {plaintext.decode()}")
+    
+    await framed_writer.close()
+
+async def client():
+    """Client side (initiator)."""
+    reader, writer = await asyncio.open_connection('localhost', 9999)
+    
+    # Create handshake
+    hs = AsyncNoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+    await hs.set_as_initiator()
+    await hs.generate_static_keypair()
+    await hs.initialize()
+    
+    # Create framing
+    framed_reader = AsyncFramedReader(reader)
+    framed_writer = AsyncFramedWriter(writer)
+    
+    # Perform handshake
+    msg1 = await hs.write_message(b"")
+    await framed_writer.write_message(msg1)
+    
+    msg2 = await framed_reader.read_message()
+    await hs.read_message(msg2)
+    
+    msg3 = await hs.write_message(b"")
+    await framed_writer.write_message(msg3)
+    
+    # Switch to transport mode
+    transport = await hs.to_transport()
+    
+    # Send encrypted message
+    ciphertext = await transport.send(b"Hello, async server!")
+    await framed_writer.write_message(ciphertext)
+    
+    await framed_writer.close()
+
+# Run server
+async def main():
+    server = await asyncio.start_server(handle_client, 'localhost', 9999)
+    async with server:
+        await server.serve_forever()
+
+asyncio.run(main())
+```
+
+**Performance Characteristics**:
+- All async operations use `run_in_executor()` to avoid blocking event loop
+- Minimal overhead (microseconds) compared to synchronous version
+- No native async cryptography (wraps sync primitives)
+- Suitable for I/O-bound applications where concurrency is beneficial
+- Not faster than sync version for single operations, but allows concurrent handshakes
+
+**Limitations and Caveats**:
+- Underlying crypto operations still run synchronously (via executor)
+- No performance gain for CPU-bound workloads
+- Best for I/O-bound scenarios (network communication, multiple concurrent connections)
+- Memory usage slightly higher due to executor threads
+
+**Testing**:
+- 21 async tests covering all async classes and methods
+- Tests complete in <1 second (no blocking)
+- In-memory tests for speed (no real TCP connections)
+- Total test count: 228 tests (207 original + 21 async)
+
+**Documentation**:
+- Complete async section in `README.md` with usage examples
+- Full async API reference in `docs/API.md`
+- Working example in `examples/async_tcp_example.py`
+- See `docs/CHANGELOG.md` for detailed changes
 
 ---
 
