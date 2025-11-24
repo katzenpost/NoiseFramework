@@ -19,6 +19,14 @@ from noiseframework.framing import (
     read_framed_message,
     write_framed_message,
 )
+from noiseframework.async_support import (
+    AsyncNoiseHandshake,
+    AsyncNoiseTransport,
+    AsyncFramedReader,
+    AsyncFramedWriter,
+    async_read_framed_message,
+    async_write_framed_message,
+)
 
 __all__ = [
     "__version__",
@@ -29,4 +37,10 @@ __all__ = [
     "FramingError",
     "read_framed_message",
     "write_framed_message",
+    "AsyncNoiseHandshake",
+    "AsyncNoiseTransport",
+    "AsyncFramedReader",
+    "AsyncFramedWriter",
+    "async_read_framed_message",
+    "async_write_framed_message",
 ]

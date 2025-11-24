@@ -17,6 +17,12 @@ Complete API documentation for NoiseFramework.
   - [FramedReader](#framedreader)
   - [Convenience Functions](#convenience-functions)
   - [FramingError](#framingerror)
+- [Async/Await Support](#asyncawait-support)
+  - [AsyncNoiseHandshake](#asyncnoisehandshake)
+  - [AsyncNoiseTransport](#asyncnoisetransport)
+  - [AsyncFramedWriter](#asyncframedwriter)
+  - [AsyncFramedReader](#asyncframedreader)
+  - [Async Convenience Functions](#async-convenience-functions)
 - [Pattern System](#pattern-system)
   - [Pattern Parser](#pattern-parser)
   - [Supported Patterns](#supported-patterns)
@@ -950,6 +956,534 @@ def client():
 6. **Thread safety**: FramedReader and FramedWriter are thread-safe for concurrent read/write on different threads
 
 See [`examples/framed_tcp_example.py`](../examples/framed_tcp_example.py) for a complete working example.
+
+---
+
+## Async/Await Support
+
+NoiseFramework provides full asyncio support through async wrappers around the synchronous implementation. All async classes use `run_in_executor` internally to avoid blocking the event loop.
+
+### AsyncNoiseHandshake
+
+Async wrapper for `NoiseHandshake`. Provides async methods for performing Noise handshakes in asyncio applications.
+
+#### Import
+
+```python
+from noiseframework import AsyncNoiseHandshake
+```
+
+#### Constructor
+
+```python
+AsyncNoiseHandshake(pattern: str, logger: Optional[logging.Logger] = None) -> AsyncNoiseHandshake
+```
+
+- `pattern`: Noise pattern string (e.g., `"Noise_XX_25519_ChaChaPoly_SHA256"`)
+- `logger`: Optional logger instance
+
+#### Methods
+
+##### `await set_as_initiator()`
+
+Set this handshake as the initiator (async).
+
+```python
+handshake = AsyncNoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+await handshake.set_as_initiator()
+```
+
+##### `await set_as_responder()`
+
+Set this handshake as the responder (async).
+
+```python
+await handshake.set_as_responder()
+```
+
+##### `await generate_static_keypair()`
+
+Generate a new static keypair (async).
+
+```python
+await handshake.generate_static_keypair()
+```
+
+##### `await set_static_keypair(private_key: bytes, public_key: bytes)`
+
+Set static keypair from existing keys (async).
+
+```python
+await handshake.set_static_keypair(private_key, public_key)
+```
+
+##### `await set_remote_static_public_key(public_key: bytes)`
+
+Set the remote party's static public key (async).
+
+```python
+await handshake.set_remote_static_public_key(remote_public)
+```
+
+##### `await initialize()`
+
+Initialize the handshake state (async).
+
+```python
+await handshake.initialize()
+```
+
+##### `await write_message(payload: bytes = b"") -> bytes`
+
+Write a handshake message (async).
+
+```python
+msg1 = await handshake.write_message(b"")
+```
+
+##### `await read_message(message: bytes) -> bytes`
+
+Read a handshake message (async).
+
+```python
+payload = await handshake.read_message(msg1)
+```
+
+##### `await to_transport() -> AsyncNoiseTransport`
+
+Convert completed handshake to async transport mode.
+
+```python
+transport = await handshake.to_transport()
+```
+
+Returns: `AsyncNoiseTransport` instance
+
+##### `await get_handshake_hash() -> bytes`
+
+Get the handshake hash after completion (async).
+
+```python
+h = await handshake.get_handshake_hash()
+```
+
+#### Properties
+
+##### `.is_complete` (bool)
+
+Check if handshake is complete (sync property).
+
+```python
+if handshake.is_complete:
+    transport = await handshake.to_transport()
+```
+
+##### `.pattern` (NoisePattern)
+
+Get the Noise pattern object (sync property).
+
+```python
+pattern_name = handshake.pattern.name
+```
+
+#### Complete Example
+
+```python
+import asyncio
+from noiseframework import AsyncNoiseHandshake
+
+async def perform_handshake():
+    # Create initiator
+    initiator = AsyncNoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+    await initiator.set_as_initiator()
+    await initiator.generate_static_keypair()
+    await initiator.initialize()
+    
+    # Create responder
+    responder = AsyncNoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+    await responder.set_as_responder()
+    await responder.generate_static_keypair()
+    await responder.initialize()
+    
+    # Perform XX handshake
+    msg1 = await initiator.write_message(b"")
+    await responder.read_message(msg1)
+    
+    msg2 = await responder.write_message(b"")
+    await initiator.read_message(msg2)
+    
+    msg3 = await initiator.write_message(b"")
+    await responder.read_message(msg3)
+    
+    # Get transports
+    init_transport = await initiator.to_transport()
+    resp_transport = await responder.to_transport()
+    
+    # Exchange encrypted messages
+    ciphertext = await init_transport.send(b"Hello!")
+    plaintext = await resp_transport.receive(ciphertext)
+    print(f"Received: {plaintext}")
+
+asyncio.run(perform_handshake())
+```
+
+---
+
+### AsyncNoiseTransport
+
+Async wrapper for `NoiseTransport`. Provides async methods for encrypted message exchange after handshake completion.
+
+#### Import
+
+```python
+from noiseframework import AsyncNoiseTransport
+```
+
+#### Creation
+
+Typically created via `AsyncNoiseHandshake.to_transport()`, but can be constructed directly:
+
+```python
+AsyncNoiseTransport(send_cipher, receive_cipher, logger: Optional[logging.Logger] = None)
+```
+
+#### Methods
+
+##### `await send(plaintext: bytes, associated_data: bytes = b"") -> bytes`
+
+Encrypt and send a message (async).
+
+```python
+ciphertext = await transport.send(b"Secret message")
+```
+
+- `plaintext`: Message to encrypt
+- `associated_data`: Optional additional authenticated data (AEAD)
+- Returns: Encrypted ciphertext with authentication tag
+
+##### `await receive(ciphertext: bytes, associated_data: bytes = b"") -> bytes`
+
+Receive and decrypt a message (async).
+
+```python
+plaintext = await transport.receive(ciphertext)
+```
+
+- `ciphertext`: Encrypted message with authentication tag
+- `associated_data`: Optional additional authenticated data (must match sender's)
+- Returns: Decrypted plaintext
+
+#### Properties
+
+##### `.send_nonce` (int)
+
+Get current send nonce value (sync property).
+
+```python
+nonce = transport.send_nonce
+```
+
+##### `.receive_nonce` (int)
+
+Get current receive nonce value (sync property).
+
+```python
+nonce = transport.receive_nonce
+```
+
+#### Example
+
+```python
+# After handshake completes
+transport = await handshake.to_transport()
+
+# Encrypt and send
+ciphertext = await transport.send(b"Hello, async world!")
+
+# Decrypt and receive
+plaintext = await transport.receive(ciphertext)
+```
+
+---
+
+### AsyncFramedWriter
+
+Async writer for length-prefixed framed messages. Compatible with `asyncio.StreamWriter`.
+
+#### Import
+
+```python
+from noiseframework import AsyncFramedWriter
+```
+
+#### Constructor
+
+```python
+AsyncFramedWriter(
+    writer: asyncio.StreamWriter,
+    max_message_size: int = 16*1024*1024,  # 16 MB default
+    logger: Optional[logging.Logger] = None
+) -> AsyncFramedWriter
+```
+
+- `writer`: asyncio StreamWriter to write to
+- `max_message_size`: Maximum message size in bytes (default 16 MB)
+- `logger`: Optional logger instance
+
+#### Methods
+
+##### `await write_message(message: bytes)`
+
+Write a length-prefixed message (async).
+
+```python
+writer = AsyncFramedWriter(stream_writer)
+await writer.write_message(b"Hello, async!")
+```
+
+Raises: `FramingError` if message exceeds `max_message_size`
+
+##### `await close()`
+
+Close the underlying writer and wait for completion.
+
+```python
+await writer.close()
+```
+
+#### Properties
+
+##### `.messages_sent` (int)
+
+Number of messages sent (for debugging).
+
+```python
+count = writer.messages_sent
+```
+
+#### Example
+
+```python
+import asyncio
+from noiseframework import AsyncFramedWriter
+
+async def send_framed():
+    reader, writer = await asyncio.open_connection('localhost', 8000)
+    
+    framed_writer = AsyncFramedWriter(writer)
+    await framed_writer.write_message(b"Message 1")
+    await framed_writer.write_message(b"Message 2")
+    await framed_writer.close()
+
+asyncio.run(send_framed())
+```
+
+---
+
+### AsyncFramedReader
+
+Async reader for length-prefixed framed messages. Compatible with `asyncio.StreamReader`.
+
+#### Import
+
+```python
+from noiseframework import AsyncFramedReader
+```
+
+#### Constructor
+
+```python
+AsyncFramedReader(
+    reader: asyncio.StreamReader,
+    max_message_size: int = 16*1024*1024,  # 16 MB default
+    logger: Optional[logging.Logger] = None
+) -> AsyncFramedReader
+```
+
+- `reader`: asyncio StreamReader to read from
+- `max_message_size`: Maximum message size in bytes (default 16 MB)
+- `logger`: Optional logger instance
+
+#### Methods
+
+##### `await read_message() -> bytes`
+
+Read a length-prefixed message (async).
+
+```python
+reader = AsyncFramedReader(stream_reader)
+message = await reader.read_message()
+```
+
+Returns: Message bytes
+
+Raises:
+- `FramingError` if frame is invalid, truncated, or oversized
+- `asyncio.IncompleteReadError` if connection closes mid-message
+
+##### `await close()`
+
+Close the underlying reader (no-op for StreamReader, included for consistency).
+
+```python
+await reader.close()
+```
+
+#### Properties
+
+##### `.messages_received` (int)
+
+Number of messages received (for debugging).
+
+```python
+count = reader.messages_received
+```
+
+#### Example
+
+```python
+import asyncio
+from noiseframework import AsyncFramedReader
+
+async def receive_framed():
+    reader, writer = await asyncio.open_connection('localhost', 8000)
+    
+    framed_reader = AsyncFramedReader(reader)
+    msg1 = await framed_reader.read_message()
+    msg2 = await framed_reader.read_message()
+    await framed_reader.close()
+    
+    print(f"Received: {msg1}, {msg2}")
+
+asyncio.run(receive_framed())
+```
+
+---
+
+### Async Convenience Functions
+
+#### `async_write_framed_message()`
+
+Write a single framed message to an asyncio StreamWriter.
+
+```python
+from noiseframework import async_write_framed_message
+
+await async_write_framed_message(writer, b"Hello")
+```
+
+Parameters:
+- `writer`: asyncio.StreamWriter
+- `message`: bytes to write
+- `max_message_size`: Maximum allowed message size (default 16 MB)
+
+#### `async_read_framed_message()`
+
+Read a single framed message from an asyncio StreamReader.
+
+```python
+from noiseframework import async_read_framed_message
+
+message = await async_read_framed_message(reader)
+```
+
+Parameters:
+- `reader`: asyncio.StreamReader
+- `max_message_size`: Maximum allowed message size (default 16 MB)
+
+Returns: bytes
+
+---
+
+### Complete Async TCP Example
+
+```python
+import asyncio
+from noiseframework import (
+    AsyncNoiseHandshake,
+    AsyncFramedReader,
+    AsyncFramedWriter,
+)
+
+async def handle_client(reader, writer):
+    """Server: handle incoming client."""
+    # Noise handshake (responder)
+    hs = AsyncNoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+    await hs.set_as_responder()
+    await hs.generate_static_keypair()
+    await hs.initialize()
+    
+    # Framing
+    framed_reader = AsyncFramedReader(reader)
+    framed_writer = AsyncFramedWriter(writer)
+    
+    # Handshake
+    msg1 = await framed_reader.read_message()
+    await hs.read_message(msg1)
+    msg2 = await hs.write_message(b"")
+    await framed_writer.write_message(msg2)
+    msg3 = await framed_reader.read_message()
+    await hs.read_message(msg3)
+    
+    # Transport
+    transport = await hs.to_transport()
+    
+    # Receive encrypted message
+    ciphertext = await framed_reader.read_message()
+    plaintext = await transport.receive(ciphertext)
+    print(f"Received: {plaintext.decode()}")
+    
+    await framed_writer.close()
+
+async def client():
+    """Client: connect and send message."""
+    reader, writer = await asyncio.open_connection('localhost', 9999)
+    
+    # Noise handshake (initiator)
+    hs = AsyncNoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+    await hs.set_as_initiator()
+    await hs.generate_static_keypair()
+    await hs.initialize()
+    
+    # Framing
+    framed_reader = AsyncFramedReader(reader)
+    framed_writer = AsyncFramedWriter(writer)
+    
+    # Handshake
+    msg1 = await hs.write_message(b"")
+    await framed_writer.write_message(msg1)
+    msg2 = await framed_reader.read_message()
+    await hs.read_message(msg2)
+    msg3 = await hs.write_message(b"")
+    await framed_writer.write_message(msg3)
+    
+    # Transport
+    transport = await hs.to_transport()
+    
+    # Send encrypted message
+    ciphertext = await transport.send(b"Hello, async server!")
+    await framed_writer.write_message(ciphertext)
+    
+    await framed_writer.close()
+
+# Run server
+async def main():
+    server = await asyncio.start_server(handle_client, 'localhost', 9999)
+    async with server:
+        await server.serve_forever()
+
+asyncio.run(main())
+```
+
+### Async Best Practices
+
+1. **Use async methods**: Always `await` async operations - they run in executor to avoid blocking
+2. **Close streams properly**: Use `await writer.close()` to ensure graceful cleanup
+3. **Error handling**: Catch `FramingError` and `asyncio.IncompleteReadError`
+4. **Logging**: Pass custom loggers to track async operations
+5. **Performance**: Async wrappers add minimal overhead via `run_in_executor`
+
+See [`examples/async_tcp_example.py`](../examples/async_tcp_example.py) for a complete working example with server and client.
 
 ---
 
