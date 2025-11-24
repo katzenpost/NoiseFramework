@@ -1,7 +1,7 @@
 """
 Fallback Pattern Support Example
 
-This example demonstrates the Noise Pipes protocol (IK → XXfallback) where:
+This example demonstrates the Noise Pipes protocol (IK -> XXfallback) where:
 1. Alice attempts an IK handshake with Bob's static key
 2. Bob cannot decrypt Alice's first message (wrong static key or outdated PSK)
 3. Bob extracts Alice's ephemeral key and initiates fallback to XXfallback
@@ -22,7 +22,7 @@ from noiseframework import NoiseHandshake
 
 
 def demonstrate_fallback():
-    """Demonstrate IK → XXfallback fallback scenario (Noise Pipes protocol)."""
+    """Demonstrate IK -> XXfallback fallback scenario (Noise Pipes protocol)."""
     
     print("=== Noise Pipes Protocol: IK -> XXfallback ===\n")
     
@@ -120,18 +120,18 @@ def demonstrate_fallback():
     # 13. Test transport encryption
     print("\n13. Test transport encryption...")
     
-    # Bob → Alice
+    # Bob -> Alice
     message1 = b"Welcome to the secure channel!"
     encrypted1 = bob_send.encrypt_with_ad(b"", message1)
     decrypted1 = alice_recv.decrypt_with_ad(b"", encrypted1)
-    print(f"    Bob → Alice: {decrypted1.decode()}")
+    print(f"    Bob -> Alice: {decrypted1.decode()}")
     assert decrypted1 == message1
     
-    # Alice → Bob
+    # Alice -> Bob
     message2 = b"Thank you, fallback worked perfectly!"
     encrypted2 = alice_send.encrypt_with_ad(b"", message2)
     decrypted2 = bob_recv.decrypt_with_ad(b"", encrypted2)
-    print(f"    Alice → Bob: {decrypted2.decode()}")
+    print(f"    Alice -> Bob: {decrypted2.decode()}")
     assert decrypted2 == message2
     
     print("\n=== Fallback Handshake Successful ===")
