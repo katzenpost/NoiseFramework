@@ -34,6 +34,7 @@
   - [Logging](#logging)
   - [Message Framing](#message-framing)
   - [Async/Await Support](#asyncawait-support)
+  - [Pre-Shared Key (PSK) Support](#pre-shared-key-psk-support)
 - [CLI Documentation](#-cli-documentation)
   - [Generate Keypair](#generate-keypair)
   - [Validate Pattern](#validate-pattern)
@@ -57,9 +58,10 @@
 - **🔒 Secure by Default**: Uses well-vetted cryptographic primitives from trusted libraries
 - **🐍 Pythonic API**: Simple, type-hinted interfaces that are easy to use and hard to misuse
 - **🛠️ CLI Tool**: Command-line interface for encryption, decryption, and handshake operations
-- **✅ Well-Tested**: Comprehensive test suite with 268 tests achieving 100% pass rate
+- **✅ Well-Tested**: Comprehensive test suite with 290 tests achieving 100% pass rate
 - **📦 Zero Config**: Works out-of-the-box with sensible defaults
 - **🔧 Flexible**: Supports multiple DH functions, cipher suites, and hash functions
+- **🛡️ PSK Support**: Pre-Shared Key patterns for quantum-resistant authentication (psk0-psk4)
 - **📖 Documented**: Extensive documentation with examples and best practices
 - **🔍 Helpful Errors**: Custom exceptions with actionable error messages guide you to fix issues quickly
 - **📝 Built-in Logging**: Comprehensive logging support for debugging and monitoring
@@ -841,6 +843,150 @@ message = await async_read_framed_message(reader)
 - Logging support in all async classes
 
 See [`examples/async_tcp_example.py`](examples/async_tcp_example.py) for a complete working example with server and client.
+
+---
+
+### Pre-Shared Key (PSK) Support
+
+NoiseFramework supports Pre-Shared Key (PSK) patterns for quantum-resistant authentication. PSK patterns add an additional layer of security by mixing a shared secret into the handshake, providing protection against future quantum computer attacks on Diffie-Hellman key exchange.
+
+#### What are PSK Patterns?
+
+PSK patterns combine traditional Noise handshakes with pre-shared keys:
+- **Quantum Resistance**: PSKs are immune to quantum computer attacks (unlike DH)
+- **Additional Authentication**: Extra authentication layer beyond public keys
+- **Pre-computation Resistance**: Attackers can't pre-compute attacks
+- **Common Use Cases**: IoT devices, enterprise VPNs, defense systems, embedded systems
+
+#### PSK Pattern Format
+
+PSK patterns use modifiers (`psk0` through `psk4`) that indicate when the PSK is mixed:
+
+```
+Noise_XXpsk3_25519_ChaChaPoly_SHA256  # XX with PSK after third message
+Noise_NNpsk0_25519_ChaChaPoly_SHA256  # NN with PSK before first message
+Noise_IKpsk2_448_AESGCM_BLAKE2b       # IK with PSK after second message
+```
+
+**PSK Modifiers:**
+- `psk0`: PSK mixed before first message (maximum quantum resistance)
+- `psk1`: PSK mixed after first message
+- `psk2`: PSK mixed after second message (common for IK patterns)
+- `psk3`: PSK mixed after third message (most common - XXpsk3)
+- `psk4`: PSK mixed after fourth message (rare)
+
+#### Basic PSK Usage
+
+```python
+import os
+from noiseframework import NoiseHandshake, NoiseTransport
+
+# Generate or load a 32-byte pre-shared key
+psk = os.urandom(32)  # Must be exchanged securely out-of-band
+
+# Initiator
+initiator = NoiseHandshake("Noise_NNpsk0_25519_ChaChaPoly_SHA256")
+initiator.set_as_initiator()
+initiator.set_psk(psk)  # Set PSK before initialize()
+initiator.initialize()
+
+# Responder
+responder = NoiseHandshake("Noise_NNpsk0_25519_ChaChaPoly_SHA256")
+responder.set_as_responder()
+responder.set_psk(psk)  # Must use same PSK
+responder.initialize()
+
+# Perform handshake (PSK mixed automatically)
+msg1 = initiator.write_message(b"")
+responder.read_message(msg1)
+
+msg2 = responder.write_message(b"")
+initiator.read_message(msg2)
+
+# Create transport - now quantum-resistant!
+init_send, init_recv = initiator.to_transport()
+resp_send, resp_recv = responder.to_transport()
+
+init_transport = NoiseTransport(init_send, init_recv)
+resp_transport = NoiseTransport(resp_send, resp_recv)
+
+# Secure communication
+ciphertext = init_transport.send(b"Quantum-resistant message!")
+plaintext = resp_transport.receive(ciphertext)
+```
+
+#### XXpsk3 - Most Common PSK Pattern
+
+The `XXpsk3` pattern (mutual authentication + late PSK) is the most commonly used PSK pattern:
+
+```python
+psk = os.urandom(32)
+
+# Initiator
+initiator = NoiseHandshake("Noise_XXpsk3_25519_ChaChaPoly_SHA256")
+initiator.set_as_initiator()
+initiator.generate_static_keypair()  # XX requires static keys
+initiator.set_psk(psk)
+initiator.initialize()
+
+# Responder
+responder = NoiseHandshake("Noise_XXpsk3_25519_ChaChaPoly_SHA256")
+responder.set_as_responder()
+responder.generate_static_keypair()
+responder.set_psk(psk)
+responder.initialize()
+
+# Three-message handshake
+msg1 = initiator.write_message(b"")
+responder.read_message(msg1)
+
+msg2 = responder.write_message(b"")
+initiator.read_message(msg2)
+
+msg3 = initiator.write_message(b"")  # PSK mixed here
+responder.read_message(msg3)
+
+# Both parties mutually authenticated + quantum-resistant
+assert initiator.remote_static_public == responder.static_public
+assert responder.remote_static_public == initiator.static_public
+```
+
+#### PSK with Async/Await
+
+PSK works seamlessly with async code:
+
+```python
+async def async_psk_example():
+    psk = os.urandom(32)
+    
+    handshake = AsyncNoiseHandshake("Noise_XXpsk3_25519_ChaChaPoly_SHA256")
+    await handshake.set_as_initiator()
+    await handshake.generate_static_keypair()
+    await handshake.set_psk(psk)  # Async PSK setting
+    await handshake.initialize()
+    
+    # Continue with async handshake...
+```
+
+#### PSK Security Considerations
+
+**When to Use PSK:**
+- You need quantum resistance
+- You can securely exchange a shared secret out-of-band
+- You're building IoT or embedded systems
+- You want additional authentication beyond public keys
+
+**PSK Management:**
+- PSKs must be exchanged securely (never over an insecure channel)
+- Use strong randomness (32 bytes from `os.urandom()`)
+- PSKs can be safely reused across sessions
+- Consider key rotation policies for long-lived PSKs
+
+**Placement Trade-offs:**
+- **Early PSK (psk0)**: Maximum quantum resistance, protects entire handshake
+- **Late PSK (psk3)**: Allows public key exchange first, then adds PSK protection
+
+See [`examples/psk_example.py`](examples/psk_example.py) for complete working examples of NNpsk0, XXpsk3, and IKpsk2 patterns.
 
 ---
 

@@ -556,6 +556,37 @@ Set the remote peer's known static public key (for patterns like IK, IKpsk).
 handshake.set_remote_static_public_key(server_public_key)
 ```
 
+##### `set_psk(psk)`
+
+```python
+set_psk(psk: bytes) -> None
+```
+
+Set the pre-shared key for PSK patterns.
+
+**Parameters:**
+- `psk` (bytes): Pre-shared key (must be exactly 32 bytes)
+
+**Raises:**
+- `ValidationError`: If pattern doesn't use a PSK modifier or PSK is not 32 bytes
+
+**Note:** Must be called before `initialize()` for PSK patterns (e.g., NNpsk0, XXpsk3, IKpsk2). The PSK is automatically mixed into the handshake state at the position indicated by the PSK modifier (psk0-psk4).
+
+**Example:**
+```python
+import os
+
+# Generate or load 32-byte PSK
+psk = os.urandom(32)
+
+# Set PSK for PSK pattern
+handshake = NoiseHandshake("Noise_XXpsk3_25519_ChaChaPoly_SHA256")
+handshake.set_as_initiator()
+handshake.generate_static_keypair()
+handshake.set_psk(psk)  # Must call before initialize()
+handshake.initialize()
+```
+
 ##### `initialize()`
 
 ```python
@@ -1429,6 +1460,24 @@ Set the remote party's static public key (async).
 await handshake.set_remote_static_public_key(remote_public)
 ```
 
+##### `await set_psk(psk: bytes)`
+
+Set pre-shared key for PSK patterns (async).
+
+```python
+import os
+psk = os.urandom(32)
+await handshake.set_psk(psk)
+```
+
+**Parameters:**
+- `psk` (bytes): 32-byte pre-shared key
+
+**Raises:**
+- `ValidationError`: If pattern doesn't use PSK modifier or PSK is not 32 bytes
+
+**Note:** Must be called before `await initialize()` for PSK patterns.
+
 ##### `await initialize()`
 
 Initialize the handshake state (async).
@@ -1959,6 +2008,74 @@ NoiseFramework supports all 12 fundamental interactive patterns:
 | Server knows client's key | `KK` |
 | One-way encryption (no auth) | `NN` (not for production!) |
 | Anonymous client, authenticated server | `XK` or `NK` |
+| Quantum-resistant with PSK | `XXpsk3` (most common) |
+| IoT with pre-shared secrets | `NNpsk0`, `IKpsk2` |
+
+#### Pre-Shared Key (PSK) Patterns
+
+NoiseFramework supports PSK modifiers for quantum-resistant patterns. PSK patterns mix a pre-shared key into the handshake, providing:
+- **Quantum Resistance**: PSKs immune to quantum attacks on DH
+- **Additional Authentication**: Extra security layer beyond public keys
+- **Pre-computation Resistance**: Attackers can't pre-compute attacks
+
+**PSK Modifiers:**
+- `psk0`: PSK mixed before first message (maximum quantum resistance)
+- `psk1`: PSK mixed after first message
+- `psk2`: PSK mixed after second message (common for IK patterns)
+- `psk3`: PSK mixed after third message (most common - XXpsk3)
+- `psk4`: PSK mixed after fourth message (rare)
+
+**PSK Pattern Examples:**
+- `Noise_XXpsk3_25519_ChaChaPoly_SHA256` - Mutual auth + PSK after third message
+- `Noise_NNpsk0_25519_ChaChaPoly_SHA256` - Anonymous + PSK before first message
+- `Noise_IKpsk2_448_AESGCM_BLAKE2b` - Known responder + PSK after second message
+
+**Any base pattern can be combined with any PSK modifier:**
+- NNpsk0, NNpsk2, XXpsk0, XXpsk3, IKpsk0, IKpsk2, KKpsk0, KKpsk2, etc.
+
+**PSK Usage Example:**
+```python
+import os
+from noiseframework import NoiseHandshake
+
+# Generate or load 32-byte PSK (must be exchanged securely)
+psk = os.urandom(32)
+
+# Initiator with XXpsk3 pattern
+initiator = NoiseHandshake("Noise_XXpsk3_25519_ChaChaPoly_SHA256")
+initiator.set_as_initiator()
+initiator.generate_static_keypair()
+initiator.set_psk(psk)  # Set PSK before initialize()
+initiator.initialize()
+
+# Responder with same PSK
+responder = NoiseHandshake("Noise_XXpsk3_25519_ChaChaPoly_SHA256")
+responder.set_as_responder()
+responder.generate_static_keypair()
+responder.set_psk(psk)  # Must use same PSK
+responder.initialize()
+
+# Perform 3-message XXpsk3 handshake
+msg1 = initiator.write_message(b"")
+responder.read_message(msg1)
+
+msg2 = responder.write_message(b"")
+initiator.read_message(msg2)
+
+msg3 = initiator.write_message(b"")  # PSK mixed here
+responder.read_message(msg3)
+
+# Now quantum-resistant!
+```
+
+**PSK Security Considerations:**
+- PSKs must be 32 bytes (use `os.urandom(32)`)
+- PSKs must be exchanged securely out-of-band
+- PSKs can be safely reused across sessions
+- Early PSK (psk0) provides maximum quantum resistance
+- Late PSK (psk3) allows public key exchange first
+
+See [`examples/psk_example.py`](../examples/psk_example.py) for complete working examples.
 
 ---
 

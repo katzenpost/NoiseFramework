@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Pre-Shared Key (PSK) support for quantum-resistant patterns**:
+  - Extended pattern parser to support PSK modifiers: `psk0`, `psk1`, `psk2`, `psk3`, `psk4`
+  - PSK patterns format: `Noise_XXpsk3_25519_ChaChaPoly_SHA256` (base pattern + PSK modifier)
+  - Added `NoiseHandshake.set_psk(psk: bytes)` method to configure 32-byte pre-shared keys
+  - PSK validation: ensures pattern uses PSK modifier and key is exactly 32 bytes
+  - PSK token processing integrated into handshake message flow (automatic mixing via MixKeyAndHash)
+  - PSK mixing positions: `psk0` before first message, `psk1-4` after specified message
+  - Async PSK support: `AsyncNoiseHandshake.set_psk(psk: bytes)` with async/await compatibility
+  - Security benefits: quantum resistance, additional authentication layer, pre-computation resistance
+  - All PSK patterns work with existing transport and framing infrastructure
+- `examples/psk_example.py` with 3 comprehensive PSK demonstrations:
+  - **NNpsk0**: Anonymous pattern with PSK mixed before first message (2-message handshake)
+  - **XXpsk3**: Mutual authentication with PSK after third message (most common PSK pattern)
+  - **IKpsk2**: Known responder identity with PSK after second message
+  - Educational section explaining quantum resistance and PSK security benefits
+  - Use cases: IoT devices, enterprise VPNs, defense systems, embedded systems
+- `tests/test_psk.py` with 22 comprehensive tests (100% pass rate):
+  - PSK pattern parsing tests (valid patterns, all modifiers, invalid modifiers)
+  - PSK token placement verification (psk0-4 positions)
+  - PSK validation tests (size requirements, pattern requirements)
+  - Complete handshake tests for NNpsk0, XXpsk3, IKpsk2 patterns
+  - PSK mismatch authentication failure test
+  - Transport encryption after PSK handshake
+  - Multiple message exchange tests
+  - Payload handling in PSK handshakes
 - **High-level connection/session manager API**:
   - Created `noiseframework/connection.py` module (~654 lines)
   - `NoiseConnection` class for synchronous high-level connections

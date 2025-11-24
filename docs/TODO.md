@@ -2,7 +2,7 @@
 
 This document tracks implementation tasks for NoiseFramework enhancements (version 1.3.0 - Production Readiness).
 
-**Progress**: 5/7 complete (71%)
+**Progress**: 6/7 complete (86%)
 
 ---
 
@@ -777,41 +777,209 @@ except PatternError as e:
 
 ---
 
-### 6. ⏳ **PSK (Pre-Shared Key) Support** [TODO]
+### 6. ✅ **PSK (Pre-Shared Key) Support** [DONE]
 
-**Goal**: Add support for PSK patterns (NNpsk2, XXpsk3, etc.)
+**Goal**: Add support for PSK patterns for quantum-resistant authentication.
 
 **Tasks**:
-- [ ] Extend pattern parser to recognize PSK modifiers
-- [ ] Add PSK mixing to `SymmetricState`
-- [ ] Add `set_psk()` method to `NoiseHandshake`
-- [ ] Update pattern validation
-- [ ] Add PSK examples
-- [ ] Add comprehensive tests for PSK patterns
+- [x] Extend pattern parser to recognize PSK modifiers
+- [x] Add PSK token processing (uses existing `MixKeyAndHash`)
+- [x] Add `set_psk()` method to `NoiseHandshake`
+- [x] Add async PSK support (`AsyncNoiseHandshake.set_psk()`)
+- [x] Update pattern validation
+- [x] Add PSK examples
+- [x] Add comprehensive tests for PSK patterns
 
 **Target Files**:
-- Modify: `noiseframework/noise/pattern.py`
-- Modify: `noiseframework/noise/state.py`
-- Modify: `noiseframework/noise/handshake.py`
-- New: `examples/psk_example.py`
-- New: `tests/test_psk.py`
-- Update: `docs/API.md`
+- Modified: `noiseframework/noise/pattern.py` (added `psk_modifier` field, PSK regex, token insertion)
+- Modified: `noiseframework/noise/handshake.py` (added PSK storage, validation, token processing)
+- Modified: `noiseframework/async_support.py` (added async `set_psk()` method)
+- New: `examples/psk_example.py` (~290 lines, 3 complete examples)
+- New: `tests/test_psk.py` (22 tests, 100% pass rate)
+- Updated: `docs/CHANGELOG.md` (PSK feature documented)
 
-**PSK Patterns to Support**:
-- NNpsk0, NNpsk2
-- XXpsk0, XXpsk3
-- IKpsk0, IKpsk2
-- (And others from Noise spec)
+**Supported PSK Modifiers**:
+- `psk0`: PSK mixed before first message
+- `psk1`: PSK mixed after first message
+- `psk2`: PSK mixed after second message
+- `psk3`: PSK mixed after third message
+- `psk4`: PSK mixed after fourth message
+
+**All Base Patterns Work With PSK**:
+- NNpsk0, NNpsk2, XXpsk0, XXpsk3, IKpsk0, IKpsk2, KKpsk0, KKpsk2, NKpsk0, NKpsk2, XKpsk1, etc.
+- Format: `Noise_<BASE><PSK>_<DH>_<CIPHER>_<HASH>` (e.g., `Noise_XXpsk3_25519_ChaChaPoly_SHA256`)
 
 **Implementation Notes**:
+
+**Pattern String Format**:
+```python
+# PSK patterns combine base pattern with PSK modifier
+"Noise_XXpsk3_25519_ChaChaPoly_SHA256"  # XX with PSK after third message
+"Noise_NNpsk0_25519_ChaChaPoly_SHA256"  # NN with PSK before first message
+"Noise_IKpsk2_448_AESGCM_BLAKE2b"       # IK with PSK after second message
 ```
-[When completed, document here:]
-- Exact pattern string format (e.g., "Noise_NNpsk2_25519_ChaChaPoly_SHA256")
-- set_psk() method signature
-- Where PSK is mixed in different patterns
-- Example usage for each PSK pattern
-- Security considerations
+
+**Import Statements**:
+```python
+# PSK support works with existing classes
+from noiseframework import NoiseHandshake, AsyncNoiseHandshake
 ```
+
+**NoiseHandshake.set_psk() API**:
+```python
+def set_psk(self, psk: bytes) -> None:
+    """
+    Set pre-shared key for PSK patterns.
+    
+    Args:
+        psk: 32-byte pre-shared key
+        
+    Raises:
+        ValidationError: If pattern doesn't use PSK modifier or PSK is not 32 bytes
+    """
+```
+
+**AsyncNoiseHandshake.set_psk() API**:
+```python
+async def set_psk(self, psk: bytes) -> None:
+    """Async version of set_psk()."""
+```
+
+**PSK Mixing Positions**:
+- **psk0**: Mixed immediately before first handshake message (most quantum-resistant)
+- **psk1**: Mixed after first message is processed
+- **psk2**: Mixed after second message is processed (common for IK patterns)
+- **psk3**: Mixed after third message is processed (most common - XXpsk3)
+- **psk4**: Mixed after fourth message is processed (rare)
+
+**Complete Working Examples**:
+
+**Example 1: NNpsk0 (Anonymous + Early PSK)**:
+```python
+import os
+from noiseframework import NoiseHandshake, NoiseTransport
+
+# Generate shared secret (32 bytes)
+psk = os.urandom(32)
+
+# Initiator
+initiator = NoiseHandshake("Noise_NNpsk0_25519_ChaChaPoly_SHA256")
+initiator.set_as_initiator()
+initiator.set_psk(psk)  # Set PSK before initialize
+initiator.initialize()
+
+# Responder
+responder = NoiseHandshake("Noise_NNpsk0_25519_ChaChaPoly_SHA256")
+responder.set_as_responder()
+responder.set_psk(psk)  # Must use same PSK
+responder.initialize()
+
+# Handshake (2 messages: -> e psk, <- e ee)
+msg1 = initiator.write_message(b"")
+responder.read_message(msg1)
+
+msg2 = responder.write_message(b"")
+initiator.read_message(msg2)
+
+# Create transport
+init_send, init_recv = initiator.to_transport()
+resp_send, resp_recv = responder.to_transport()
+
+init_transport = NoiseTransport(init_send, init_recv)
+resp_transport = NoiseTransport(resp_send, resp_recv)
+
+# Secure communication
+ct = init_transport.send(b"Quantum-resistant message!")
+pt = resp_transport.receive(ct)
+```
+
+**Example 2: XXpsk3 (Mutual Auth + Late PSK, Most Common)**:
+```python
+psk = os.urandom(32)
+
+# Initiator
+initiator = NoiseHandshake("Noise_XXpsk3_25519_ChaChaPoly_SHA256")
+initiator.set_as_initiator()
+initiator.generate_static_keypair()  # XX requires static keys
+initiator.set_psk(psk)
+initiator.initialize()
+
+# Responder
+responder = NoiseHandshake("Noise_XXpsk3_25519_ChaChaPoly_SHA256")
+responder.set_as_responder()
+responder.generate_static_keypair()  # XX requires static keys
+responder.set_psk(psk)
+responder.initialize()
+
+# Handshake (3 messages: -> e, <- e ee s es, -> s se psk)
+msg1 = initiator.write_message(b"")
+responder.read_message(msg1)
+
+msg2 = responder.write_message(b"")
+initiator.read_message(msg2)
+
+msg3 = initiator.write_message(b"")  # PSK mixed here
+responder.read_message(msg3)
+
+# Both parties authenticated, PSK provides quantum resistance
+# Create transport and communicate...
+```
+
+**Example 3: IKpsk2 (Known Responder + Mid PSK)**:
+```python
+psk = os.urandom(32)
+
+# Responder generates keys first
+temp = NoiseHandshake("Noise_IKpsk2_25519_ChaChaPoly_SHA256")
+temp.generate_static_keypair()
+resp_public = temp.static_public
+
+# Initiator (knows responder's public key)
+initiator = NoiseHandshake("Noise_IKpsk2_25519_ChaChaPoly_SHA256")
+initiator.set_as_initiator()
+initiator.generate_static_keypair()
+initiator.set_remote_static_public_key(resp_public)  # Known in advance
+initiator.set_psk(psk)
+initiator.initialize()
+
+# Responder
+responder = NoiseHandshake("Noise_IKpsk2_25519_ChaChaPoly_SHA256")
+responder.set_as_responder()
+responder.set_static_keypair(temp.static_private, temp.static_public)
+responder.set_psk(psk)
+responder.initialize()
+
+# Handshake (2 messages: -> e es s ss, <- e ee se psk)
+msg1 = initiator.write_message(b"Hello")
+payload1 = responder.read_message(msg1)  # "Hello"
+
+msg2 = responder.write_message(b"World")  # PSK mixed here
+payload2 = initiator.read_message(msg2)  # "World"
+
+# Initiator authenticated to responder, PSK provides additional security
+```
+
+**Security Considerations**:
+- **Quantum Resistance**: PSK immune to quantum computer attacks (unlike DH)
+- **Additional Authentication**: PSK provides extra authentication layer beyond public keys
+- **Pre-computation Resistance**: Attackers can't pre-compute attacks on PSK
+- **PSK Management**: PSKs must be exchanged securely out-of-band (like passwords)
+- **PSK Reuse**: Same PSK can be reused for multiple sessions safely (mixed into unique handshake state)
+- **Placement Trade-offs**:
+  - Early PSK (psk0): Maximum quantum resistance, protects entire handshake
+  - Late PSK (psk3): Allows public key exchange first, then adds PSK protection
+- **Use Cases**: IoT devices, enterprise VPNs, defense systems, embedded systems, any scenario requiring quantum resistance
+
+**Test Coverage**:
+- 22 comprehensive tests covering all PSK scenarios
+- Pattern parsing (valid/invalid PSK modifiers)
+- PSK token placement verification
+- PSK validation (size, pattern requirements)
+- Complete handshakes (NNpsk0, XXpsk3, IKpsk2)
+- PSK mismatch authentication failure
+- Transport encryption after PSK handshake
+- Multiple message exchange
+- Payload handling
 
 ---
 
