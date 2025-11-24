@@ -5,6 +5,7 @@ This module implements the main NoiseHandshake class that orchestrates
 the complete handshake flow according to the Noise specification.
 """
 
+import logging
 from typing import Optional, Tuple
 from enum import Enum
 
@@ -30,18 +31,29 @@ class NoiseHandshake:
     authentication, and transition to transport mode.
     """
 
-    def __init__(self, pattern_string: str) -> None:
+    def __init__(self, pattern_string: str, logger: Optional[logging.Logger] = None) -> None:
         """
         Initialize a Noise handshake.
 
         Args:
             pattern_string: Noise pattern (e.g., "Noise_XX_25519_ChaChaPoly_SHA256")
+            logger: Optional logger instance. If None, creates a logger for this class.
 
         Raises:
             ValueError: If pattern string is invalid
         """
+        # Setup logging
+        self.logger = logger or logging.getLogger(f"{__name__}.NoiseHandshake")
+        self.logger.debug(f"Initializing NoiseHandshake with pattern: {pattern_string}")
+        
         # Parse and validate pattern
         self.pattern: NoisePattern = parse_pattern(pattern_string)
+        self.logger.debug(
+            f"Pattern parsed: {self.pattern.handshake_pattern}, "
+            f"DH={self.pattern.dh_function}, "
+            f"Cipher={self.pattern.cipher_function}, "
+            f"Hash={self.pattern.hash_function}"
+        )
 
         # Initialize crypto functions
         self.dh: DHFunction = get_dh_function(self.pattern.dh_function)
@@ -74,14 +86,18 @@ class NoiseHandshake:
     def set_as_initiator(self) -> None:
         """Set this handshake as the initiator."""
         if self.role is not None:
+            self.logger.error("Attempted to set role when already set")
             raise ValueError("Role already set")
         self.role = Role.INITIATOR
+        self.logger.info("Role set as INITIATOR")
 
     def set_as_responder(self) -> None:
         """Set this handshake as the responder."""
         if self.role is not None:
+            self.logger.error("Attempted to set role when already set")
             raise ValueError("Role already set")
         self.role = Role.RESPONDER
+        self.logger.info("Role set as RESPONDER")
 
     def set_static_keypair(self, private_key: bytes, public_key: bytes) -> None:
         """
@@ -95,20 +111,25 @@ class NoiseHandshake:
             ValueError: If key sizes are incorrect
         """
         if len(private_key) != self.dh.dhlen:
+            self.logger.error(f"Invalid private key size: expected {self.dh.dhlen}, got {len(private_key)}")
             raise ValueError(
                 f"Private key must be {self.dh.dhlen} bytes, got {len(private_key)}"
             )
         if len(public_key) != self.dh.dhlen:
+            self.logger.error(f"Invalid public key size: expected {self.dh.dhlen}, got {len(public_key)}")
             raise ValueError(
                 f"Public key must be {self.dh.dhlen} bytes, got {len(public_key)}"
             )
 
         self.static_private = private_key
         self.static_public = public_key
+        self.logger.debug(f"Static keypair set (public key: {public_key.hex()[:16]}...)")
 
     def generate_static_keypair(self) -> None:
         """Generate a new static key pair."""
+        self.logger.debug("Generating static keypair...")
         self.static_private, self.static_public = self.dh.generate_keypair()
+        self.logger.info(f"Static keypair generated (public key: {self.static_public.hex()[:16]}...)")
 
     def set_remote_static_public_key(self, public_key: bytes) -> None:
         """
@@ -121,10 +142,12 @@ class NoiseHandshake:
             ValueError: If key size is incorrect
         """
         if len(public_key) != self.dh.dhlen:
+            self.logger.error(f"Invalid remote public key size: expected {self.dh.dhlen}, got {len(public_key)}")
             raise ValueError(
                 f"Public key must be {self.dh.dhlen} bytes, got {len(public_key)}"
             )
         self.remote_static_public = public_key
+        self.logger.debug(f"Remote static public key set (key: {public_key.hex()[:16]}...)")
 
     def initialize(self) -> None:
         """
@@ -135,24 +158,31 @@ class NoiseHandshake:
         Raises:
             ValueError: If role is not set or required keys are missing
         """
+        self.logger.debug("Initializing handshake...")
+        
         if self.role is None:
+            self.logger.error("Attempted to initialize without setting role")
             raise ValueError("Role must be set before initializing")
 
         # Check for required static keys based on pattern
         if self.role == Role.INITIATOR and self.initiator_pre:
             if "s" in self.initiator_pre and not self.static_private:
+                self.logger.error("Initiator requires static keypair for this pattern but none provided")
                 raise ValueError("Initiator requires static key pair for this pattern")
 
         if self.role == Role.RESPONDER and self.responder_pre:
             if "s" in self.responder_pre and not self.static_private:
+                self.logger.error("Responder requires static keypair for this pattern but none provided")
                 raise ValueError("Responder requires static key pair for this pattern")
 
         # Initialize symmetric state with protocol name
         protocol_name = self.pattern.name.encode("ascii")
         self.symmetric.initialize_symmetric(protocol_name)
+        self.logger.debug(f"Symmetric state initialized with protocol: {self.pattern.name}")
 
         # Process pre-messages
         self._process_pre_messages()
+        self.logger.info(f"Handshake initialized as {self.role.value}, ready for message exchange")
 
     def _process_pre_messages(self) -> None:
         """Process pre-message patterns (known keys)."""
@@ -194,8 +224,10 @@ class NoiseHandshake:
             ValueError: If not in correct state or handshake is complete
         """
         if self.role is None:
+            self.logger.error("Attempted to write message without setting role")
             raise ValueError("Role not set")
         if self.handshake_complete:
+            self.logger.error("Attempted to write message after handshake completion")
             raise ValueError("Handshake already complete")
 
         # Check if it's our turn to send
@@ -205,11 +237,14 @@ class NoiseHandshake:
             else self.message_index % 2 == 1
         )
         if not is_our_turn:
+            self.logger.error(f"Attempted to send message out of turn (message_index={self.message_index})")
             raise ValueError("Not our turn to send a message")
 
+        self.logger.debug(f"Writing handshake message {self.message_index + 1}")
         message = bytearray()
         pattern = self.message_patterns[self.message_index]
         tokens = [t.strip() for t in pattern.split(",")]
+        self.logger.debug(f"Processing tokens: {tokens}")
 
         for token in tokens:
             if token == "e":
@@ -263,12 +298,15 @@ class NoiseHandshake:
         message.extend(encrypted_payload)
 
         self.message_index += 1
+        message_bytes = bytes(message)
+        self.logger.info(f"Sent handshake message {self.message_index} ({len(message_bytes)} bytes, payload={len(payload)} bytes)")
 
         # Check if handshake is complete
         if self.message_index >= len(self.message_patterns):
             self.handshake_complete = True
+            self.logger.info("Handshake complete - ready for transport mode")
 
-        return bytes(message)
+        return message_bytes
 
     def read_message(self, message: bytes) -> bytes:
         """
@@ -284,8 +322,10 @@ class NoiseHandshake:
             ValueError: If not in correct state or message is invalid
         """
         if self.role is None:
+            self.logger.error("Attempted to read message without setting role")
             raise ValueError("Role not set")
         if self.handshake_complete:
+            self.logger.error("Attempted to read message after handshake completion")
             raise ValueError("Handshake already complete")
 
         # Check if it's our turn to receive
@@ -295,10 +335,13 @@ class NoiseHandshake:
             else self.message_index % 2 == 0
         )
         if not is_our_turn:
+            self.logger.error(f"Attempted to receive message out of turn (message_index={self.message_index})")
             raise ValueError("Not our turn to receive a message")
 
+        self.logger.debug(f"Reading handshake message {self.message_index + 1} ({len(message)} bytes)")
         pattern = self.message_patterns[self.message_index]
         tokens = [t.strip() for t in pattern.split(",")]
+        self.logger.debug(f"Processing tokens: {tokens}")
 
         offset = 0
 
@@ -354,10 +397,12 @@ class NoiseHandshake:
         payload = self.symmetric.decrypt_and_hash(encrypted_payload)
 
         self.message_index += 1
+        self.logger.info(f"Received handshake message {self.message_index} (payload={len(payload)} bytes)")
 
         # Check if handshake is complete
         if self.message_index >= len(self.message_patterns):
             self.handshake_complete = True
+            self.logger.info("Handshake complete - ready for transport mode")
 
         return payload
 
