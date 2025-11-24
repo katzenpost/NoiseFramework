@@ -32,6 +32,7 @@
   - [Transport Layer Encryption](#transport-layer-encryption)
   - [Error Handling](#error-handling)
   - [Logging](#logging)
+  - [Message Framing](#message-framing)
 - [CLI Documentation](#-cli-documentation)
   - [Generate Keypair](#generate-keypair)
   - [Validate Pattern](#validate-pattern)
@@ -445,6 +446,166 @@ logging.getLogger("noiseframework.noise.state").setLevel(logging.WARNING)
 ```
 
 See [`examples/logging_example.py`](examples/logging_example.py) for more detailed examples.
+
+### Message Framing
+
+When using Noise over stream-based transports (TCP, pipes, etc.), you need a way to preserve message boundaries. NoiseFramework provides length-prefixed framing utilities for this purpose.
+
+#### Basic Usage
+
+```python
+import socket
+from noiseframework import NoiseHandshake, FramedWriter, FramedReader
+
+# After handshake completes...
+transport = handshake.to_transport()
+
+# Wrap socket for framed communication
+writer = FramedWriter(sock.makefile('wb'))
+reader = FramedReader(sock.makefile('rb'))
+
+# Send framed encrypted messages
+ciphertext = transport.send(b"Hello, World!")
+writer.write_message(ciphertext)
+
+# Receive framed encrypted messages
+framed_message = reader.read_message()
+plaintext = transport.receive(framed_message)
+```
+
+#### Frame Format
+
+NoiseFramework uses a simple 4-byte big-endian length prefix:
+
+```
+┌──────────────┬────────────────────┐
+│ Length (4B)  │  Message Data      │
+│ big-endian   │  (0 to 2^32-1 B)   │
+└──────────────┴────────────────────┘
+```
+
+#### Configuration
+
+```python
+# Default maximum message size is 16 MB
+reader = FramedReader(stream)  # max_message_size=16*1024*1024
+
+# Set custom maximum
+reader = FramedReader(stream, max_message_size=1024*1024)  # 1 MB limit
+
+# Add logging
+import logging
+logger = logging.getLogger("myapp.framing")
+reader = FramedReader(stream, logger=logger)
+writer = FramedWriter(stream, logger=logger)
+```
+
+#### TCP Example
+
+```python
+import socket
+from noiseframework import NoiseHandshake, FramedWriter, FramedReader
+
+# Server
+def server(port):
+    with socket.socket() as sock:
+        sock.bind(('localhost', port))
+        sock.listen(1)
+        conn, _ = sock.accept()
+        
+        # Noise handshake (responder)
+        hs = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+        hs.set_as_responder()
+        hs.generate_static_keypair()
+        hs.initialize()
+        
+        reader = FramedReader(conn.makefile('rb'))
+        writer = FramedWriter(conn.makefile('wb'))
+        
+        # Handshake messages with framing
+        msg1 = reader.read_message()
+        msg2 = hs.read_message(msg1)
+        msg2_out = hs.write_message(msg2)
+        writer.write_message(msg2_out)
+        
+        msg3 = reader.read_message()
+        hs.read_message(msg3)
+        
+        # Transport mode
+        transport = hs.to_transport()
+        encrypted = reader.read_message()
+        plaintext = transport.receive(encrypted)
+        print(f"Server received: {plaintext}")
+
+# Client
+def client(port):
+    with socket.socket() as sock:
+        sock.connect(('localhost', port))
+        
+        # Noise handshake (initiator)
+        hs = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+        hs.set_as_initiator()
+        hs.generate_static_keypair()
+        hs.initialize()
+        
+        reader = FramedReader(sock.makefile('rb'))
+        writer = FramedWriter(sock.makefile('wb'))
+        
+        # Handshake messages with framing
+        msg1 = hs.write_message(b"")
+        writer.write_message(msg1)
+        
+        msg2 = reader.read_message()
+        msg3_payload = hs.read_message(msg2)
+        msg3 = hs.write_message(msg3_payload)
+        writer.write_message(msg3)
+        
+        # Transport mode
+        transport = hs.to_transport()
+        ciphertext = transport.send(b"Hello, Server!")
+        writer.write_message(ciphertext)
+```
+
+#### Convenience Functions
+
+For single-message operations:
+
+```python
+from noiseframework import write_framed_message, read_framed_message
+
+# Write single framed message
+write_framed_message(stream, b"Hello")
+
+# Read single framed message
+message = read_framed_message(stream)
+
+# With custom max size
+message = read_framed_message(stream, max_message_size=1024*1024)
+```
+
+#### Error Handling
+
+```python
+from noiseframework import FramingError
+
+try:
+    message = reader.read_message()
+except FramingError as e:
+    # Connection closed, oversized message, or invalid frame
+    print(f"Framing error: {e}")
+except IOError as e:
+    # Underlying stream error
+    print(f"IO error: {e}")
+```
+
+**Key Points:**
+- Automatic handling of partial reads
+- Protection against oversized messages (configurable limit)
+- Message counters for debugging (`messages_sent`, `messages_received`)
+- Thread-safe for concurrent read/write on different threads
+- Works with any byte stream (sockets, files, pipes, etc.)
+
+See [`examples/framed_tcp_example.py`](examples/framed_tcp_example.py) for a complete working example.
 
 ---
 
