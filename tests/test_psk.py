@@ -239,6 +239,8 @@ class TestPSKHandshakes:
     
     def test_psk_mismatch_fails(self):
         """Test that mismatched PSKs cause authentication failure."""
+        from noiseframework.exceptions import AuthenticationError
+        
         psk1 = os.urandom(32)
         psk2 = os.urandom(32)
         
@@ -254,15 +256,12 @@ class TestPSKHandshakes:
         responder.set_psk(psk2)
         responder.initialize()
         
-        # Handshake should fail on second message
+        # Handshake should fail - mismatched PSKs cause authentication failure
         msg1 = initiator.write_message(b"")
-        responder.read_message(msg1)
         
-        msg2 = responder.write_message(b"")
-        
-        # Authentication should fail when initiator tries to read
-        with pytest.raises(Exception):  # AuthenticationError or similar
-            initiator.read_message(msg2)
+        # Authentication should fail when responder reads with wrong PSK
+        with pytest.raises(AuthenticationError):
+            responder.read_message(msg1)
 
 
 class TestPSKTransport:
