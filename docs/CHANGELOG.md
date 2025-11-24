@@ -17,6 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - WARNING-level logging for approaching nonce limits in transport mode
 - `examples/logging_example.py` demonstrating logging configuration and usage
 - `tests/test_logging.py` with 21 comprehensive logging tests (100% pass rate)
+- Message framing utilities for stream-based transports:
+  - `FramedReader` class for reading length-prefixed messages with automatic partial read handling
+  - `FramedWriter` class for writing length-prefixed messages
+  - `FramingError` exception for framing-related errors (oversized messages, truncated frames)
+  - Helper functions `read_framed_message()` and `write_framed_message()` for single-message operations
+  - 4-byte big-endian length prefix format (supports messages up to 2^32-1 bytes)
+  - Default 16 MB maximum message size (configurable)
+  - Message counters (`messages_sent`, `messages_received`) for debugging
+  - Optional logging support in framing classes
+- `examples/framed_tcp_example.py` demonstrating TCP communication with Noise + framing
+- `tests/test_framing.py` with 30 comprehensive framing tests (100% pass rate)
+- Exported framing utilities from main package: `FramedReader`, `FramedWriter`, `FramingError`, `read_framed_message`, `write_framed_message`
 
 ## [1.2.1] - 2025-11-18
 
