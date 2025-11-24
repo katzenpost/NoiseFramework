@@ -2,6 +2,7 @@
 
 import pytest
 from noiseframework.crypto.cipher import ChaChaPoly, AESGCMCipher, get_cipher_function
+from noiseframework.exceptions import AuthenticationError, CryptoError, InvalidKeySizeError, UnsupportedPrimitiveError
 
 
 class TestChaChaPoly:
@@ -63,7 +64,7 @@ class TestChaChaPoly:
         assert decrypted == plaintext
 
         # Wrong AD should fail authentication
-        with pytest.raises(ValueError, match="Decryption failed"):
+        with pytest.raises(AuthenticationError):
             cipher.decrypt(key, nonce, b"wrong", ciphertext)
 
     def test_tampered_ciphertext_fails(self) -> None:
@@ -77,17 +78,17 @@ class TestChaChaPoly:
         # Tamper with ciphertext
         tampered = bytes([ciphertext[0] ^ 1]) + ciphertext[1:]
 
-        with pytest.raises(ValueError, match="Decryption failed"):
+        with pytest.raises(AuthenticationError):
             cipher.decrypt(key, nonce, b"", tampered)
 
     def test_invalid_key_size(self) -> None:
         """Test that invalid key size raises error."""
         cipher = ChaChaPoly()
 
-        with pytest.raises(ValueError, match="Key must be 32 bytes"):
+        with pytest.raises(InvalidKeySizeError):
             cipher.encrypt(b"short", 0, b"", b"data")
 
-        with pytest.raises(ValueError, match="Key must be 32 bytes"):
+        with pytest.raises(InvalidKeySizeError):
             cipher.decrypt(b"short", 0, b"", b"data")
 
     def test_invalid_nonce_range(self) -> None:
@@ -95,10 +96,10 @@ class TestChaChaPoly:
         cipher = ChaChaPoly()
         key = b"5" * 32
 
-        with pytest.raises(ValueError, match="Nonce must be a 64-bit unsigned integer"):
+        with pytest.raises(CryptoError):
             cipher.encrypt(key, -1, b"", b"data")
 
-        with pytest.raises(ValueError, match="Nonce must be a 64-bit unsigned integer"):
+        with pytest.raises(CryptoError):
             cipher.encrypt(key, 2**64, b"", b"data")
 
 
@@ -161,7 +162,7 @@ class TestAESGCM:
         assert decrypted == plaintext
 
         # Wrong AD should fail authentication
-        with pytest.raises(ValueError, match="Decryption failed"):
+        with pytest.raises(AuthenticationError):
             cipher.decrypt(key, nonce, b"wrong", ciphertext)
 
     def test_tampered_ciphertext_fails(self) -> None:
@@ -175,17 +176,17 @@ class TestAESGCM:
         # Tamper with ciphertext
         tampered = bytes([ciphertext[0] ^ 1]) + ciphertext[1:]
 
-        with pytest.raises(ValueError, match="Decryption failed"):
+        with pytest.raises(AuthenticationError):
             cipher.decrypt(key, nonce, b"", tampered)
 
     def test_invalid_key_size(self) -> None:
         """Test that invalid key size raises error."""
         cipher = AESGCMCipher()
 
-        with pytest.raises(ValueError, match="Key must be 32 bytes"):
+        with pytest.raises(InvalidKeySizeError):
             cipher.encrypt(b"short", 0, b"", b"data")
 
-        with pytest.raises(ValueError, match="Key must be 32 bytes"):
+        with pytest.raises(InvalidKeySizeError):
             cipher.decrypt(b"short", 0, b"", b"data")
 
     def test_invalid_nonce_range(self) -> None:
@@ -193,10 +194,10 @@ class TestAESGCM:
         cipher = AESGCMCipher()
         key = b"f" * 32
 
-        with pytest.raises(ValueError, match="Nonce must be a 64-bit unsigned integer"):
+        with pytest.raises(CryptoError):
             cipher.encrypt(key, -1, b"", b"data")
 
-        with pytest.raises(ValueError, match="Nonce must be a 64-bit unsigned integer"):
+        with pytest.raises(CryptoError):
             cipher.encrypt(key, 2**64, b"", b"data")
 
 
@@ -217,7 +218,7 @@ class TestGetCipherFunction:
 
     def test_unknown_cipher_function(self) -> None:
         """Test unknown cipher function raises error."""
-        with pytest.raises(ValueError, match="Unknown cipher function"):
+        with pytest.raises(UnsupportedPrimitiveError):
             get_cipher_function("unknown")
 
 
@@ -235,3 +236,4 @@ class TestCipherCompatibility:
             ciphertext = cipher.encrypt(key, nonce, ad, plaintext)
             decrypted = cipher.decrypt(key, nonce, ad, ciphertext)
             assert decrypted == plaintext
+

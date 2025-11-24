@@ -8,6 +8,13 @@ for handshake and transport operations.
 import logging
 from unittest.mock import Mock, call
 import pytest
+from noiseframework.exceptions import (
+    AuthenticationError, CryptoError, InvalidKeySizeError,
+    UnsupportedPrimitiveError, UnsupportedPatternError,
+    ValidationError, RoleNotSetError, RoleAlreadySetError,
+    WrongTurnError, HandshakeCompleteError, MissingKeyError,
+    NoKeySetError, NonceOverflowError
+)
 
 from noiseframework import NoiseHandshake, NoiseTransport
 from noiseframework.noise.state import CipherState, SymmetricState
@@ -46,10 +53,10 @@ class TestHandshakeLogging:
         
         # Test error when trying to set role again
         with caplog.at_level(logging.ERROR):
-            with pytest.raises(ValueError):
+            with pytest.raises((RoleNotSetError, RoleAlreadySetError, WrongTurnError, HandshakeCompleteError, ValidationError, UnsupportedPatternError, MissingKeyError, NoKeySetError, InvalidKeySizeError)):
                 handshake.set_as_responder()
         
-        assert "Attempted to set role when already set" in caplog.text
+        assert "Attempted to set role as RESPONDER when already set" in caplog.text
 
     def test_key_generation_logs(self, caplog):
         """Test that key generation logs at appropriate levels."""
@@ -156,7 +163,7 @@ class TestHandshakeLogging:
         
         # Test writing without role
         with caplog.at_level(logging.ERROR):
-            with pytest.raises(ValueError):
+            with pytest.raises((RoleNotSetError, RoleAlreadySetError, WrongTurnError, HandshakeCompleteError, ValidationError, UnsupportedPatternError, MissingKeyError, NoKeySetError, InvalidKeySizeError)):
                 handshake.write_message(b"test")
         
         assert "Attempted to write message without setting role" in caplog.text
@@ -168,10 +175,10 @@ class TestHandshakeLogging:
         handshake.initialize()
         
         with caplog.at_level(logging.ERROR):
-            with pytest.raises(ValueError):
+            with pytest.raises((RoleNotSetError, RoleAlreadySetError, WrongTurnError, HandshakeCompleteError, ValidationError, UnsupportedPatternError, MissingKeyError, NoKeySetError, InvalidKeySizeError)):
                 handshake.to_transport()
         
-        assert "Attempted to create transport ciphers before handshake completion" in caplog.text
+        assert "Attempted to call to_transport before handshake completion" in caplog.text
 
 
 class TestTransportLogging:
@@ -318,7 +325,7 @@ class TestLogLevels:
         handshake = NoiseHandshake("Noise_NN_25519_ChaChaPoly_SHA256")
         
         with caplog.at_level(logging.ERROR):
-            with pytest.raises(ValueError):
+            with pytest.raises((RoleNotSetError, RoleAlreadySetError, WrongTurnError, HandshakeCompleteError, ValidationError, UnsupportedPatternError, MissingKeyError, NoKeySetError, InvalidKeySizeError)):
                 handshake.initialize()  # No role set
         
         assert "ERROR" in caplog.text

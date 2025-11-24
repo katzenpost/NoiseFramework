@@ -1,6 +1,13 @@
 """Tests for hash functions."""
 
 import pytest
+from noiseframework.exceptions import (
+    AuthenticationError, CryptoError, InvalidKeySizeError,
+    UnsupportedPrimitiveError, UnsupportedPatternError,
+    ValidationError, RoleNotSetError, RoleAlreadySetError,
+    WrongTurnError, HandshakeCompleteError, MissingKeyError,
+    NoKeySetError, NonceOverflowError
+)
 from noiseframework.crypto.hash import SHA256, SHA512, BLAKE2s, BLAKE2b, get_hash_function
 
 
@@ -85,10 +92,10 @@ class TestSHA256:
         ck = b"x" * 32
         ikm = b"y" * 32
         
-        with pytest.raises(ValueError, match="num_outputs must be 2 or 3"):
+        with pytest.raises(CryptoError):
             h.hkdf(ck, ikm, 1)
         
-        with pytest.raises(ValueError, match="num_outputs must be 2 or 3"):
+        with pytest.raises(CryptoError):
             h.hkdf(ck, ikm, 4)
 
 
@@ -221,7 +228,7 @@ class TestGetHashFunction:
 
     def test_unknown_hash_function(self) -> None:
         """Test unknown hash function raises error."""
-        with pytest.raises(ValueError, match="Unknown hash function"):
+        with pytest.raises(UnsupportedPrimitiveError):
             get_hash_function("unknown")
 
 
@@ -247,3 +254,5 @@ class TestAllHashFunctions:
             outputs = hash_func.hkdf(ck, ikm, 2)
             assert len(outputs) == 2
             assert all(len(o) == hash_func.hashlen for o in outputs)
+
+

@@ -6,6 +6,7 @@ Supports SHA-256, SHA-512, BLAKE2s, and BLAKE2b.
 
 import hashlib
 from typing import Optional
+from noiseframework.exceptions import CryptoError, UnsupportedPrimitiveError
 
 
 class HashFunction:
@@ -67,7 +68,10 @@ class HashFunction:
             ValueError: If num_outputs is not 2 or 3
         """
         if num_outputs not in (2, 3):
-            raise ValueError(f"num_outputs must be 2 or 3, got {num_outputs}")
+            raise CryptoError(
+                f"HKDF num_outputs must be 2 or 3 (per Noise spec), got {num_outputs}. "
+                f"This indicates incorrect usage of the HKDF function."
+            )
 
         # HKDF from Noise spec (simplified, two-step only)
         temp_key = self.hmac_hash(chaining_key, input_key_material)
@@ -224,7 +228,7 @@ def get_hash_function(name: str) -> HashFunction:
         HashFunction instance
 
     Raises:
-        ValueError: If hash function name is not recognized
+        UnsupportedPrimitiveError: If hash function name is not recognized
     """
     if name == "SHA256":
         return SHA256()
@@ -235,4 +239,7 @@ def get_hash_function(name: str) -> HashFunction:
     elif name == "BLAKE2b":
         return BLAKE2b()
     else:
-        raise ValueError(f"Unknown hash function: {name}")
+        raise UnsupportedPrimitiveError(
+            f"Unknown hash function: '{name}'. "
+            f"Supported hash functions: SHA256, SHA512, BLAKE2s, BLAKE2b."
+        )

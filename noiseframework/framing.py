@@ -9,6 +9,8 @@ import logging
 import struct
 from typing import BinaryIO, Optional
 
+from noiseframework.exceptions import NoiseError, ValidationError
+
 
 # Frame format: 4-byte length (big-endian unsigned int) + message data
 FRAME_HEADER_SIZE = 4
@@ -16,7 +18,7 @@ FRAME_HEADER_FORMAT = "!I"  # Network byte order (big-endian), unsigned int
 DEFAULT_MAX_MESSAGE_SIZE = 16 * 1024 * 1024  # 16 MB
 
 
-class FramingError(Exception):
+class FramingError(NoiseError):
     """
     Exception raised for framing errors.
     
@@ -48,12 +50,18 @@ class FramedWriter:
             logger: Optional logger for framing operations
         
         Raises:
-            ValueError: If max_message_size is invalid
+            ValidationError: If max_message_size is invalid
         """
         if max_message_size <= 0:
-            raise ValueError(f"max_message_size must be positive, got {max_message_size}")
+            raise ValidationError(
+                f"max_message_size must be positive, got {max_message_size}. "
+                f"Use a reasonable value like {DEFAULT_MAX_MESSAGE_SIZE} (16 MB)."
+            )
         if max_message_size > 2**32 - 1:
-            raise ValueError(f"max_message_size exceeds 32-bit limit: {max_message_size}")
+            raise ValidationError(
+                f"max_message_size exceeds 32-bit limit: {max_message_size}. "
+                f"Maximum allowed is {2**32 - 1} bytes (~4 GB)."
+            )
         
         self.stream = stream
         self.max_message_size = max_message_size
@@ -130,12 +138,18 @@ class FramedReader:
             logger: Optional logger for framing operations
         
         Raises:
-            ValueError: If max_message_size is invalid
+            ValidationError: If max_message_size is invalid
         """
         if max_message_size <= 0:
-            raise ValueError(f"max_message_size must be positive, got {max_message_size}")
+            raise ValidationError(
+                f"max_message_size must be positive, got {max_message_size}. "
+                f"Use a reasonable value like {DEFAULT_MAX_MESSAGE_SIZE} (16 MB)."
+            )
         if max_message_size > 2**32 - 1:
-            raise ValueError(f"max_message_size exceeds 32-bit limit: {max_message_size}")
+            raise ValidationError(
+                f"max_message_size exceeds 32-bit limit: {max_message_size}. "
+                f"Maximum allowed is {2**32 - 1} bytes (~4 GB)."
+            )
         
         self.stream = stream
         self.max_message_size = max_message_size

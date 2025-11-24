@@ -9,6 +9,7 @@ Parses and validates Noise protocol pattern strings like:
 import re
 from typing import List, Tuple
 from dataclasses import dataclass
+from noiseframework.exceptions import UnsupportedPatternError, UnsupportedPrimitiveError
 
 
 @dataclass
@@ -66,39 +67,46 @@ def parse_pattern(pattern_string: str) -> NoisePattern:
     match = re.match(pattern_regex, pattern_string)
 
     if not match:
-        raise ValueError(
-            f"Invalid pattern string format: {pattern_string}. "
-            f"Expected format: Noise_PATTERN_DH_CIPHER_HASH"
+        raise UnsupportedPatternError(
+            f"Invalid pattern string format: '{pattern_string}'. "
+            f"Expected format: Noise_PATTERN_DH_CIPHER_HASH (e.g., Noise_XX_25519_ChaChaPoly_SHA256)"
         )
 
     handshake, dh, cipher, hash_func = match.groups()
 
     # Validate handshake pattern
     if handshake not in SUPPORTED_PATTERNS:
-        raise ValueError(
-            f"Unsupported handshake pattern: {handshake}. "
-            f"Supported patterns: {', '.join(sorted(SUPPORTED_PATTERNS))}"
+        supported = ', '.join(sorted(SUPPORTED_PATTERNS))
+        raise UnsupportedPatternError(
+            f"Unsupported handshake pattern: '{handshake}' in pattern '{pattern_string}'. "
+            f"Supported patterns: {supported}. "
+            f"Check for typos in your pattern name."
         )
 
     # Validate DH function
     if dh not in SUPPORTED_DH:
-        raise ValueError(
-            f"Unsupported DH function: {dh}. "
-            f"Supported DH functions: {', '.join(sorted(SUPPORTED_DH))}"
+        supported = ', '.join(sorted(SUPPORTED_DH))
+        raise UnsupportedPrimitiveError(
+            f"Unsupported DH function: '{dh}' in pattern '{pattern_string}'. "
+            f"Supported DH functions: {supported}. "
+            f"Currently supporting Curve25519 (25519) and Curve448 (448)."
         )
 
     # Validate cipher function
     if cipher not in SUPPORTED_CIPHERS:
-        raise ValueError(
-            f"Unsupported cipher function: {cipher}. "
-            f"Supported ciphers: {', '.join(sorted(SUPPORTED_CIPHERS))}"
+        supported = ', '.join(sorted(SUPPORTED_CIPHERS))
+        raise UnsupportedPrimitiveError(
+            f"Unsupported cipher function: '{cipher}' in pattern '{pattern_string}'. "
+            f"Supported ciphers: {supported}. "
+            f"Currently supporting ChaCha20-Poly1305 (ChaChaPoly) and AES-256-GCM (AESGCM)."
         )
 
     # Validate hash function
     if hash_func not in SUPPORTED_HASHES:
-        raise ValueError(
-            f"Unsupported hash function: {hash_func}. "
-            f"Supported hash functions: {', '.join(sorted(SUPPORTED_HASHES))}"
+        supported = ', '.join(sorted(SUPPORTED_HASHES))
+        raise UnsupportedPrimitiveError(
+            f"Unsupported hash function: '{hash_func}' in pattern '{pattern_string}'. "
+            f"Supported hash functions: {supported}."
         )
 
     return NoisePattern(
@@ -142,7 +150,11 @@ def get_pattern_tokens(handshake_pattern: str) -> Tuple[List[str], List[str], Li
     }
 
     if handshake_pattern not in patterns:
-        raise ValueError(f"Unknown handshake pattern: {handshake_pattern}")
+        supported = ', '.join(sorted(patterns.keys()))
+        raise UnsupportedPatternError(
+            f"Unknown handshake pattern: '{handshake_pattern}'. "
+            f"Supported patterns: {supported}."
+        )
 
     initiator_pre, responder_pre, messages = patterns[handshake_pattern]
     return initiator_pre, responder_pre, messages
@@ -161,5 +173,5 @@ def validate_pattern_string(pattern_string: str) -> bool:
     try:
         parse_pattern(pattern_string)
         return True
-    except ValueError:
+    except (UnsupportedPatternError, UnsupportedPrimitiveError):
         return False

@@ -1,6 +1,13 @@
 """Tests for symmetric state and cipher state."""
 
 import pytest
+from noiseframework.exceptions import (
+    AuthenticationError, CryptoError, InvalidKeySizeError,
+    UnsupportedPrimitiveError, UnsupportedPatternError,
+    ValidationError, RoleNotSetError, RoleAlreadySetError,
+    WrongTurnError, HandshakeCompleteError, MissingKeyError,
+    NoKeySetError, NonceOverflowError
+)
 from noiseframework.noise.state import CipherState, SymmetricState
 from noiseframework.crypto.cipher import ChaChaPoly
 from noiseframework.crypto.hash import SHA256
@@ -34,7 +41,7 @@ class TestCipherState:
         """Test that invalid key size raises error."""
         cs = CipherState(ChaChaPoly())
 
-        with pytest.raises(ValueError, match="Key must be 32 bytes"):
+        with pytest.raises(InvalidKeySizeError):
             cs.initialize_key(b"short")
 
     def test_encrypt_decrypt_round_trip(self) -> None:
@@ -71,14 +78,14 @@ class TestCipherState:
         """Test that encrypting without a key raises error."""
         cs = CipherState(ChaChaPoly())
 
-        with pytest.raises(ValueError, match="Cannot encrypt: no key set"):
+        with pytest.raises(NoKeySetError):
             cs.encrypt_with_ad(b"", b"data")
 
     def test_decrypt_without_key_raises_error(self) -> None:
         """Test that decrypting without a key raises error."""
         cs = CipherState(ChaChaPoly())
 
-        with pytest.raises(ValueError, match="Cannot decrypt: no key set"):
+        with pytest.raises(NoKeySetError):
             cs.decrypt_with_ad(b"", b"data")
 
     def test_rekey_not_implemented(self) -> None:

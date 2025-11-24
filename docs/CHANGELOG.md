@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Better error messages with custom exception hierarchy**:
+  - Created `noiseframework/exceptions.py` with 14 custom exception classes
+  - `NoiseError` base class for all framework exceptions (enables catching all with single except clause)
+  - Handshake exceptions: `RoleNotSetError`, `RoleAlreadySetError`, `WrongTurnError`, `HandshakeCompleteError`, `MissingKeyError`
+  - Pattern validation exceptions: `UnsupportedPatternError`, `UnsupportedPrimitiveError`
+  - State management exceptions: `NoKeySetError`, `NonceOverflowError`, `InvalidKeySizeError`
+  - Transport exception: `AuthenticationError`
+  - Generic exceptions: `CryptoError`, `ValidationError`
+  - All exceptions include helpful context: current state, expected vs actual values, actionable suggestions
+  - Error messages explain what went wrong and how to fix it (e.g., "Call generate_static_keypair() first")
+  - Pattern-specific hints for common mistakes (IK/NK/XK/KK patterns requiring pre-message keys)
+  - Cryptographic errors provide security-relevant context (nonce overflow, authentication failure)
+- Replaced all generic `ValueError` and `RuntimeError` exceptions throughout codebase
+- Updated all modules with specific custom exceptions and helpful error messages:
+  - `handshake.py`: 15+ error types with state-aware messages
+  - `state.py`: Key initialization and nonce overflow errors
+  - `pattern.py`: Pattern validation with supported options listed
+  - `crypto/cipher.py`: Key size and authentication errors with cipher context
+  - `crypto/dh.py`: DH key size errors with curve-specific messages
+  - `crypto/hash.py`: HKDF and hash function errors
+  - `framing.py`: Message size validation errors
+  - `async_support.py`: Async framing validation errors
+- All custom exceptions exported from main `noiseframework` package
+- `FramingError` now inherits from `NoiseError` for consistency
 - Async/await support for modern Python asyncio applications:
   - `AsyncNoiseHandshake` class wrapping `NoiseHandshake` with async methods
   - `AsyncNoiseTransport` class wrapping `NoiseTransport` for async encrypted communication

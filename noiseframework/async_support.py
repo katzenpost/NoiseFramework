@@ -19,6 +19,7 @@ from noiseframework.framing import (
     FRAME_HEADER_FORMAT,
     DEFAULT_MAX_MESSAGE_SIZE,
 )
+from noiseframework.exceptions import ValidationError
 
 
 class AsyncNoiseHandshake:
@@ -263,11 +264,12 @@ class AsyncFramedWriter:
             logger: Optional logger for debugging
             
         Raises:
-            ValueError: If max_message_size is invalid
+            ValidationError: If max_message_size is invalid
         """
         if max_message_size <= 0 or max_message_size >= 2**32:
-            raise ValueError(
-                f"max_message_size must be between 1 and 2^32-1, got {max_message_size}"
+            raise ValidationError(
+                f"max_message_size must be between 1 and 2^32-1, got {max_message_size}. "
+                f"Use a reasonable value like {DEFAULT_MAX_MESSAGE_SIZE} (16 MB)."
             )
         
         self.writer = writer
@@ -345,11 +347,12 @@ class AsyncFramedReader:
             logger: Optional logger for debugging
             
         Raises:
-            ValueError: If max_message_size is invalid
+            ValidationError: If max_message_size is invalid
         """
         if max_message_size <= 0 or max_message_size >= 2**32:
-            raise ValueError(
-                f"max_message_size must be between 1 and 2^32-1, got {max_message_size}"
+            raise ValidationError(
+                f"max_message_size must be between 1 and 2^32-1, got {max_message_size}. "
+                f"Use a reasonable value like {DEFAULT_MAX_MESSAGE_SIZE} (16 MB)."
             )
         
         self.reader = reader

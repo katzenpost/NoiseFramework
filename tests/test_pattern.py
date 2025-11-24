@@ -1,6 +1,13 @@
 """Tests for Noise pattern parsing."""
 
 import pytest
+from noiseframework.exceptions import (
+    AuthenticationError, CryptoError, InvalidKeySizeError,
+    UnsupportedPrimitiveError, UnsupportedPatternError,
+    ValidationError, RoleNotSetError, RoleAlreadySetError,
+    WrongTurnError, HandshakeCompleteError, MissingKeyError,
+    NoKeySetError, NonceOverflowError
+)
 from noiseframework.noise.pattern import (
     parse_pattern,
     get_pattern_tokens,
@@ -48,27 +55,27 @@ class TestParsePattern:
         ]
 
         for invalid in invalid_patterns:
-            with pytest.raises(ValueError, match="Invalid pattern string format"):
+            with pytest.raises(UnsupportedPatternError):
                 parse_pattern(invalid)
 
     def test_parse_unsupported_handshake(self) -> None:
         """Test that unsupported handshake pattern raises error."""
-        with pytest.raises(ValueError, match="Unsupported handshake pattern"):
+        with pytest.raises(UnsupportedPatternError):
             parse_pattern("Noise_ZZ_25519_ChaChaPoly_SHA256")
 
     def test_parse_unsupported_dh(self) -> None:
         """Test that unsupported DH function raises error."""
-        with pytest.raises(ValueError, match="Unsupported DH function"):
+        with pytest.raises(UnsupportedPrimitiveError):
             parse_pattern("Noise_XX_secp256k1_ChaChaPoly_SHA256")
 
     def test_parse_unsupported_cipher(self) -> None:
         """Test that unsupported cipher raises error."""
-        with pytest.raises(ValueError, match="Unsupported cipher function"):
+        with pytest.raises(UnsupportedPrimitiveError):
             parse_pattern("Noise_XX_25519_AES_SHA256")
 
     def test_parse_unsupported_hash(self) -> None:
         """Test that unsupported hash function raises error."""
-        with pytest.raises(ValueError, match="Unsupported hash function"):
+        with pytest.raises(UnsupportedPrimitiveError):
             parse_pattern("Noise_XX_25519_ChaChaPoly_MD5")
 
 
@@ -130,7 +137,7 @@ class TestGetPatternTokens:
 
     def test_unknown_pattern(self) -> None:
         """Test that unknown pattern raises error."""
-        with pytest.raises(ValueError, match="Unknown handshake pattern"):
+        with pytest.raises(UnsupportedPatternError):
             get_pattern_tokens("UNKNOWN")
 
 

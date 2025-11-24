@@ -1,6 +1,13 @@
 """Tests for CLI functionality."""
 
 import pytest
+from noiseframework.exceptions import (
+    AuthenticationError, CryptoError, InvalidKeySizeError,
+    UnsupportedPrimitiveError, UnsupportedPatternError,
+    ValidationError, RoleNotSetError, RoleAlreadySetError,
+    WrongTurnError, HandshakeCompleteError, MissingKeyError,
+    NoKeySetError, NonceOverflowError
+)
 import sys
 from io import StringIO
 from pathlib import Path
@@ -186,3 +193,4 @@ class TestCLIEncryptDecrypt:
         with patch("sys.argv", ["noiseframework", "decrypt"]):
             with pytest.raises(SystemExit):
                 main()
+
