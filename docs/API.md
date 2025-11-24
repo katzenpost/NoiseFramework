@@ -7,6 +7,10 @@ Complete API documentation for NoiseFramework.
 - [High-Level API](#high-level-api)
   - [NoiseHandshake](#noisehandshake)
   - [NoiseTransport](#noisetransport)
+- [Exception Handling](#exception-handling)
+  - [Exception Hierarchy](#exception-hierarchy)
+  - [Exception Classes](#exception-classes)
+  - [Error Handling Patterns](#error-handling-patterns)
 - [Logging](#logging)
   - [Logger Parameters](#logger-parameters)
   - [Log Levels](#log-levels)
@@ -686,7 +690,7 @@ FramedWriter(
 - `logger` (logging.Logger, optional): Custom logger. Default: `logging.getLogger("noiseframework.framing.FramedWriter")`
 
 **Raises:**
-- `ValueError`: If `max_message_size` is ≤ 0 or ≥ 2^32
+- `ValidationError`: If `max_message_size` is ≤ 0 or ≥ 2^32
 
 #### Methods
 
@@ -754,7 +758,7 @@ FramedReader(
 - `logger` (logging.Logger, optional): Custom logger. Default: `logging.getLogger("noiseframework.framing.FramedReader")`
 
 **Raises:**
-- `ValueError`: If `max_message_size` is ≤ 0 or ≥ 2^32
+- `ValidationError`: If `max_message_size` is ≤ 0 or ≥ 2^32
 
 #### Methods
 
@@ -1518,7 +1522,8 @@ Parse a Noise pattern string into its components.
   - `hash_function` (str): Hash ("SHA256", "SHA512", "BLAKE2s", or "BLAKE2b")
 
 **Raises:**
-- `ValueError`: If pattern string is invalid
+- `UnsupportedPatternError`: If pattern format is invalid
+- `UnsupportedPrimitiveError`: If DH, cipher, or hash is not supported
 
 **Example:**
 ```python
@@ -1584,7 +1589,7 @@ Get a DH function instance by name.
 - `DHFunction`: Curve25519 or Curve448 instance
 
 **Raises:**
-- `ValueError`: If name is unsupported
+- `UnsupportedPrimitiveError`: If name is unsupported
 
 #### DHFunction Interface
 
@@ -1645,7 +1650,7 @@ Get a cipher function instance by name.
 - `CipherFunction`: Cipher instance
 
 **Raises:**
-- `ValueError`: If name is unsupported
+- `UnsupportedPrimitiveError`: If name is unsupported
 
 #### CipherFunction Interface
 
@@ -1716,7 +1721,7 @@ Get a hash function instance by name.
 - `HashFunction`: Hash function instance
 
 **Raises:**
-- `ValueError`: If name is unsupported
+- `UnsupportedPrimitiveError`: If name is unsupported
 
 #### HashFunction Interface
 
@@ -1766,7 +1771,7 @@ HKDF key derivation function (Noise variant).
 - `tuple`: 2 or 3 derived keys
 
 **Raises:**
-- `ValueError`: If `num_outputs` is not 2 or 3
+- `CryptoError`: If `num_outputs` is not 2 or 3
 
 #### Supported Hash Functions
 
