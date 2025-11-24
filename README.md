@@ -31,6 +31,7 @@
   - [Pre-Shared Key Pattern (Noise_IK)](#pre-shared-key-pattern-noise_ik)
   - [Transport Layer Encryption](#transport-layer-encryption)
   - [Error Handling](#error-handling)
+  - [Logging](#logging)
 - [CLI Documentation](#-cli-documentation)
   - [Generate Keypair](#generate-keypair)
   - [Validate Pattern](#validate-pattern)
@@ -357,6 +358,93 @@ if initiator.handshake_complete:
     send_cipher, recv_cipher = initiator.to_transport()
 else:
     print("Handshake not complete")
+```
+
+---
+
+### Logging
+
+NoiseFramework includes comprehensive logging support for debugging and monitoring. All major operations are logged at appropriate levels.
+
+#### Basic Logging Setup
+
+```python
+import logging
+from noiseframework import NoiseHandshake, NoiseTransport
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)-8s] %(name)s: %(message)s"
+)
+
+# Use NoiseFramework normally - logging happens automatically
+handshake = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+handshake.set_as_initiator()  # Logs: "Role set as INITIATOR"
+handshake.generate_static_keypair()  # Logs: "Generated static keypair"
+handshake.initialize()  # Logs: "Handshake initialized"
+
+msg = handshake.write_message(b"")  # Logs: "Sent handshake message 1"
+```
+
+#### Log Levels
+
+- **DEBUG**: Detailed operations (message sizes, nonces, token processing, key operations)
+- **INFO**: Major events (role changes, handshake completion, message send/receive)
+- **WARNING**: Potential issues (nonce approaching limit)
+- **ERROR**: Failures (validation errors, authentication failures)
+
+#### Custom Logger
+
+```python
+# Create custom logger with specific configuration
+custom_logger = logging.getLogger("myapp.noise")
+custom_logger.setLevel(logging.DEBUG)
+
+# Add custom handler
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+custom_logger.addHandler(handler)
+
+# Pass custom logger to NoiseHandshake
+handshake = NoiseHandshake(
+    "Noise_XX_25519_ChaChaPoly_SHA256",
+    logger=custom_logger
+)
+
+# Pass custom logger to NoiseTransport
+transport = NoiseTransport(send_cipher, recv_cipher, logger=custom_logger)
+```
+
+#### Filtering Logs by Module
+
+```python
+# Only show INFO+ logs from handshake module
+logging.getLogger("noiseframework.noise.handshake").setLevel(logging.INFO)
+
+# Show DEBUG logs from transport module
+logging.getLogger("noiseframework.transport.transport").setLevel(logging.DEBUG)
+
+# Disable logs from state module
+logging.getLogger("noiseframework.noise.state").setLevel(logging.WARNING)
+```
+
+#### Example Log Output
+
+```
+2025-11-24 15:30:01 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Role set as INITIATOR
+2025-11-24 15:30:01 [DEBUG   ] noiseframework.noise.handshake.NoiseHandshake: Generating static keypair (Curve25519)
+2025-11-24 15:30:01 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Generated static keypair
+2025-11-24 15:30:01 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Handshake initialized
+2025-11-24 15:30:01 [DEBUG   ] noiseframework.noise.handshake.NoiseHandshake: Writing handshake message 1 (payload=0 bytes)
+2025-11-24 15:30:01 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Sent handshake message 1 (ciphertext=32 bytes)
+2025-11-24 15:30:02 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Handshake complete - ready for transport mode
+2025-11-24 15:30:02 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Created transport ciphers (initiator: send=c1, receive=c2)
+2025-11-24 15:30:03 [INFO    ] noiseframework.transport.transport.NoiseTransport: Sent encrypted message (ciphertext=29 bytes)
+2025-11-24 15:30:03 [WARNING ] noiseframework.transport.transport.NoiseTransport: Send cipher nonce high: 9223372036854775808 (approaching 2^64 limit - consider rekeying)
+```
+
+See [`examples/logging_example.py`](examples/logging_example.py) for more detailed examples.
 
 ---
 

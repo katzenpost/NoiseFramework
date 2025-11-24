@@ -7,6 +7,11 @@ Complete API documentation for NoiseFramework.
 - [High-Level API](#high-level-api)
   - [NoiseHandshake](#noisehandshake)
   - [NoiseTransport](#noisetransport)
+- [Logging](#logging)
+  - [Logger Parameters](#logger-parameters)
+  - [Log Levels](#log-levels)
+  - [Logger Names](#logger-names)
+  - [Usage Examples](#usage-examples)
 - [Pattern System](#pattern-system)
   - [Pattern Parser](#pattern-parser)
   - [Supported Patterns](#supported-patterns)
@@ -37,7 +42,7 @@ from noiseframework import NoiseHandshake
 #### Constructor
 
 ```python
-NoiseHandshake(pattern_string: str) -> NoiseHandshake
+NoiseHandshake(pattern_string: str, logger: Optional[logging.Logger] = None) -> NoiseHandshake
 ```
 
 Initialize a Noise handshake with a pattern string.
@@ -45,13 +50,20 @@ Initialize a Noise handshake with a pattern string.
 **Parameters:**
 - `pattern_string` (str): Noise pattern in format `Noise_PATTERN_DH_CIPHER_HASH`
   - Example: `"Noise_XX_25519_ChaChaPoly_SHA256"`
+- `logger` (Optional[logging.Logger]): Custom logger instance for handshake operations. If None, creates a default logger with name `noiseframework.noise.handshake.NoiseHandshake`.
 
 **Raises:**
 - `ValueError`: If pattern string is invalid or uses unsupported algorithms
 
-**Example:**
+**Examples:**
 ```python
+# Basic usage with default logger
 handshake = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+
+# With custom logger
+import logging
+custom_logger = logging.getLogger("myapp.noise")
+handshake = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256", logger=custom_logger)
 ```
 
 #### Methods
@@ -302,7 +314,28 @@ from noiseframework.transport.transport import NoiseTransport
 
 #### Constructor
 
-Typically created via `NoiseHandshake.to_transport()`, not directly.
+```python
+NoiseTransport(send_cipher: CipherState, receive_cipher: CipherState, logger: Optional[logging.Logger] = None) -> NoiseTransport
+```
+
+Typically created via `NoiseHandshake.to_transport()`, but can be instantiated directly if needed.
+
+**Parameters:**
+- `send_cipher` (CipherState): CipherState for sending messages
+- `receive_cipher` (CipherState): CipherState for receiving messages  
+- `logger` (Optional[logging.Logger]): Custom logger instance for transport operations. If None, creates a default logger with name `noiseframework.transport.transport.NoiseTransport`.
+
+**Example:**
+```python
+# Via handshake (recommended)
+send_cipher, recv_cipher = handshake.to_transport()
+transport = NoiseTransport(send_cipher, recv_cipher)
+
+# With custom logger
+import logging
+custom_logger = logging.getLogger("myapp.transport")
+transport = NoiseTransport(send_cipher, recv_cipher, logger=custom_logger)
+```
 
 #### Methods
 
@@ -373,6 +406,221 @@ Get the current receive nonce value (for monitoring/debugging).
 
 **Returns:**
 - `int`: Current nonce
+
+---
+
+## Logging
+
+NoiseFramework provides comprehensive logging support for debugging and monitoring. All major classes accept an optional `logger` parameter.
+
+### Logger Parameters
+
+All main classes support an optional `logger` parameter in their constructors:
+
+- **NoiseHandshake**: `NoiseHandshake(pattern_string: str, logger: Optional[logging.Logger] = None)`
+- **NoiseTransport**: `NoiseTransport(send_cipher, receive_cipher, logger: Optional[logging.Logger] = None)`
+- **SymmetricState**: `SymmetricState(hash_func, cipher, logger: Optional[logging.Logger] = None)`
+- **CipherState**: `CipherState(cipher, logger: Optional[logging.Logger] = None)`
+
+If `logger` is `None`, each class creates a default logger using the pattern `logging.getLogger(f"{__name__}.ClassName")`.
+
+### Log Levels
+
+NoiseFramework logs at four standard levels:
+
+#### DEBUG
+
+Detailed operational information:
+- Message sizes and nonce values
+- Token processing during handshakes (`['e', 'es', 'ss']`)
+- Key material mixing operations
+- Cipher initialization details
+
+**Example:**
+```
+DEBUG: Writing handshake message 1 (payload=0 bytes)
+DEBUG: Processing tokens: ['e']
+DEBUG: Encrypting message (plaintext=13 bytes, ad=0 bytes, nonce=0)
+DEBUG: Mixing key material (32 bytes)
+```
+
+#### INFO
+
+Major operational events:
+- Role setting (initiator/responder)
+- Handshake initialization and completion
+- Message send/receive operations
+- Transport cipher creation
+
+**Example:**
+```
+INFO: Role set as INITIATOR
+INFO: Generated static keypair
+INFO: Handshake initialized
+INFO: Sent handshake message 1 (ciphertext=32 bytes)
+INFO: Handshake complete - ready for transport mode
+INFO: Created transport ciphers (initiator: send=c1, receive=c2)
+INFO: Sent encrypted message (ciphertext=29 bytes)
+```
+
+#### WARNING
+
+Potential issues that don't prevent operation:
+- Nonce approaching limit (`>= 2^63`, warns about `2^64` overflow)
+
+**Example:**
+```
+WARNING: Send cipher nonce high: 9223372036854775808 (approaching 2^64 limit - consider rekeying)
+```
+
+#### ERROR
+
+Error conditions (always logged before raising exceptions):
+- Invalid state transitions
+- Validation failures (wrong role, missing keys)
+- Authentication failures
+- Nonce overflow
+
+**Example:**
+```
+ERROR: Attempted to write message without setting role
+ERROR: Attempted to set role when already set
+ERROR: Attempted to create transport ciphers before handshake completion
+ERROR: Decryption failed: Authentication tag verification failed
+```
+
+### Logger Names
+
+Default logger names follow the pattern `module.path.ClassName`:
+
+- `noiseframework.noise.handshake.NoiseHandshake`
+- `noiseframework.transport.transport.NoiseTransport`
+- `noiseframework.noise.state.SymmetricState`
+- `noiseframework.noise.state.CipherState`
+
+These names allow fine-grained control over logging output.
+
+### Usage Examples
+
+#### Basic Setup
+
+```python
+import logging
+from noiseframework import NoiseHandshake
+
+# Configure logging globally
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)-8s] %(name)s: %(message)s"
+)
+
+# Use NoiseFramework - logging happens automatically
+handshake = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+handshake.set_as_initiator()  # Logs: "Role set as INITIATOR"
+```
+
+#### Custom Logger
+
+```python
+import logging
+from noiseframework import NoiseHandshake, NoiseTransport
+
+# Create custom logger
+custom_logger = logging.getLogger("myapp.noise")
+custom_logger.setLevel(logging.DEBUG)
+
+# Add custom handler
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+custom_logger.addHandler(handler)
+
+# Pass to NoiseFramework components
+handshake = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256", logger=custom_logger)
+send_cipher, recv_cipher = handshake.to_transport()
+transport = NoiseTransport(send_cipher, recv_cipher, logger=custom_logger)
+```
+
+#### Per-Module Configuration
+
+```python
+import logging
+
+# Configure different levels for different modules
+logging.getLogger("noiseframework.noise.handshake").setLevel(logging.INFO)
+logging.getLogger("noiseframework.transport.transport").setLevel(logging.DEBUG)
+logging.getLogger("noiseframework.noise.state").setLevel(logging.WARNING)
+
+# Or disable all NoiseFramework logging
+logging.getLogger("noiseframework").setLevel(logging.CRITICAL)
+```
+
+#### Filtering to Specific Operations
+
+```python
+import logging
+
+# Only log handshake operations
+handshake_logger = logging.getLogger("noiseframework.noise.handshake")
+handshake_logger.setLevel(logging.DEBUG)
+
+handler = logging.FileHandler("handshake_debug.log")
+handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+handshake_logger.addHandler(handler)
+
+# NoiseTransport logs won't appear unless configured separately
+```
+
+#### Production Configuration
+
+```python
+import logging
+
+# Minimal logging in production
+logging.basicConfig(
+    level=logging.WARNING,  # Only warnings and errors
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler("/var/log/myapp/noise.log"),
+        logging.StreamHandler()
+    ]
+)
+
+# Use NoiseFramework normally
+handshake = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+# Only WARNINGs and ERRORs will be logged
+```
+
+#### Complete Example with Output
+
+```python
+import logging
+from noiseframework import NoiseHandshake
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)-8s] %(name)s: %(message)s"
+)
+
+# Create and use handshake
+handshake = NoiseHandshake("Noise_NN_25519_ChaChaPoly_SHA256")
+handshake.set_as_initiator()
+handshake.initialize()
+msg = handshake.write_message(b"hello")
+```
+
+**Output:**
+```
+2025-11-24 15:30:01 [DEBUG   ] noiseframework.noise.handshake.NoiseHandshake: Initializing NoiseHandshake with pattern: Noise_NN_25519_ChaChaPoly_SHA256
+2025-11-24 15:30:01 [DEBUG   ] noiseframework.noise.handshake.NoiseHandshake: Pattern parsed: NN, DH=25519, Cipher=ChaChaPoly, Hash=SHA256
+2025-11-24 15:30:01 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Role set as INITIATOR
+2025-11-24 15:30:01 [DEBUG   ] noiseframework.noise.handshake.NoiseHandshake: Initializing handshake (pattern=Noise_NN_25519_ChaChaPoly_SHA256)
+2025-11-24 15:30:01 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Handshake initialized
+2025-11-24 15:30:01 [DEBUG   ] noiseframework.noise.handshake.NoiseHandshake: Writing handshake message 1 (payload=5 bytes)
+2025-11-24 15:30:01 [DEBUG   ] noiseframework.noise.handshake.NoiseHandshake: Processing tokens: ['e']
+2025-11-24 15:30:01 [INFO    ] noiseframework.noise.handshake.NoiseHandshake: Sent handshake message 1 (ciphertext=37 bytes)
+```
+
+See [`examples/logging_example.py`](../examples/logging_example.py) for more comprehensive examples.
 
 ---
 
