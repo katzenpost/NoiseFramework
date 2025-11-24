@@ -57,7 +57,7 @@
 - **🔒 Secure by Default**: Uses well-vetted cryptographic primitives from trusted libraries
 - **🐍 Pythonic API**: Simple, type-hinted interfaces that are easy to use and hard to misuse
 - **🛠️ CLI Tool**: Command-line interface for encryption, decryption, and handshake operations
-- **✅ Well-Tested**: Comprehensive test suite with 243 tests achieving 100% pass rate
+- **✅ Well-Tested**: Comprehensive test suite with 268 tests achieving 100% pass rate
 - **📦 Zero Config**: Works out-of-the-box with sensible defaults
 - **🔧 Flexible**: Supports multiple DH functions, cipher suites, and hash functions
 - **📖 Documented**: Extensive documentation with examples and best practices
@@ -65,6 +65,7 @@
 - **📝 Built-in Logging**: Comprehensive logging support for debugging and monitoring
 - **📦 Message Framing**: Automatic length-prefixed framing for stream-based transports
 - **⚡ Async/Await**: Full async support for modern Python asyncio applications
+- **🔗 High-Level Connection API**: `NoiseConnection` and `AsyncNoiseConnection` for easy-to-use connection management
 
 ---
 
@@ -840,6 +841,157 @@ message = await async_read_framed_message(reader)
 - Logging support in all async classes
 
 See [`examples/async_tcp_example.py`](examples/async_tcp_example.py) for a complete working example with server and client.
+
+---
+
+### High-Level Connection API
+
+For most applications, the high-level `NoiseConnection` and `AsyncNoiseConnection` classes provide the simplest way to establish secure connections. These classes automatically handle handshakes, transport mode transitions, and message framing.
+
+#### Synchronous Connection Example
+
+```python
+from noiseframework import NoiseConnection
+import socket
+import threading
+
+def server():
+    """Responder side."""
+    server_sock = socket.socket()
+    server_sock.bind(("localhost", 9999))
+    server_sock.listen(1)
+    client_sock, _ = server_sock.accept()
+    
+    # Create connection and accept - handshake happens automatically
+    with NoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "responder") as conn:
+        conn.accept(client_sock)
+        
+        # Now in transport mode - send/receive encrypted messages
+        data = conn.receive()
+        conn.send(b"Echo: " + data)
+    
+    server_sock.close()
+
+# Start server in background
+threading.Thread(target=server, daemon=True).start()
+
+# Client (initiator side)
+with NoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "initiator") as conn:
+    conn.connect(("localhost", 9999))  # Handshake happens automatically
+    
+    conn.send(b"Hello, NoiseFramework!")
+    response = conn.receive()
+    print(response)  # b"Echo: Hello, NoiseFramework!"
+```
+
+#### Asynchronous Connection Example
+
+```python
+import asyncio
+from noiseframework import AsyncNoiseConnection
+
+async def handle_client(reader, writer):
+    """Async responder."""
+    async with AsyncNoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "responder") as conn:
+        await conn.accept_streams(reader, writer)  # Auto handshake
+        
+        data = await conn.receive()
+        await conn.send(b"Echo: " + data)
+
+async def main():
+    # Start async server
+    server = await asyncio.start_server(handle_client, "localhost", 9999)
+    
+    # Client
+    async with AsyncNoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "initiator") as conn:
+        await conn.connect(("localhost", 9999))  # Auto handshake
+        
+        await conn.send(b"Hello, async!")
+        response = await conn.receive()
+        print(response)  # b"Echo: Hello, async!"
+    
+    server.close()
+    await server.wait_closed()
+
+asyncio.run(main())
+```
+
+#### Connection API Features
+
+**NoiseConnection** (sync) and **AsyncNoiseConnection** (async):
+
+```python
+# Constructor
+conn = NoiseConnection(
+    pattern="Noise_XX_25519_ChaChaPoly_SHA256",
+    role="initiator",  # or "responder"
+    static_private_key=None,  # Optional: use custom keys
+    static_public_key=None,
+    remote_static_public_key=None,  # For IK/NK patterns
+    max_message_size=16*1024*1024,  # 16 MB default
+    logger=None  # Optional logging
+)
+
+# Initiator methods
+conn.connect(("host", port))  # Sync
+await conn.connect(("host", port))  # Async
+
+# Responder methods
+conn.accept(client_socket)  # Sync
+await conn.accept_streams(reader, writer)  # Async
+
+# Communication (same for both roles)
+conn.send(plaintext_bytes)  # Sync
+await conn.send(plaintext_bytes)  # Async
+
+plaintext = conn.receive()  # Sync
+plaintext = await conn.receive()  # Async
+
+# Connection state
+if conn.is_connected:
+    print("Connected and handshake complete")
+
+# Identity verification
+remote_key = conn.remote_static_public_key  # Get remote's identity
+local_key = conn.local_static_public_key    # Get our identity
+
+# Cleanup
+conn.close()  # Sync
+await conn.close()  # Async
+
+# Or use context managers (automatic cleanup)
+with NoiseConnection(...) as conn:
+    # ... use conn ...
+# Closes automatically
+
+async with AsyncNoiseConnection(...) as conn:
+    # ... use conn ...
+# Closes automatically
+```
+
+#### Benefits of Connection API
+
+- ✅ **Automatic handshake** - No manual `write_message()`/`read_message()` calls
+- ✅ **Automatic framing** - Built-in length-prefixed message framing
+- ✅ **Automatic transport** - Seamless transition from handshake to encryption
+- ✅ **Simple lifecycle** - Just `connect()`/`accept()`, `send()`, `receive()`, `close()`
+- ✅ **Identity access** - Easy access to local and remote public keys
+- ✅ **Context managers** - Automatic cleanup with `with` statements
+- ✅ **Clear errors** - ValidationError, HandshakeError, TransportError
+
+#### When to Use Each API
+
+**Use `NoiseConnection`/`AsyncNoiseConnection` when:**
+- Building complete secure connections (most common use case)
+- You want simplicity and automatic handling
+- Standard patterns (XX, IK, NK, etc.) are sufficient
+
+**Use `NoiseHandshake` + `NoiseTransport` when:**
+- You need fine control over handshake steps
+- Implementing custom protocols on top of Noise
+- Building non-standard integrations
+
+See [`examples/connection_example.py`](examples/connection_example.py) for complete examples including custom keys and identity verification.
 
 ---
 

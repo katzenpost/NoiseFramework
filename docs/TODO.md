@@ -2,7 +2,7 @@
 
 This document tracks implementation tasks for NoiseFramework enhancements (version 1.3.0 - Production Readiness).
 
-**Progress**: 4/7 complete (57%)
+**Progress**: 5/7 complete (71%)
 
 ---
 
@@ -448,47 +448,206 @@ plaintext = transport.receive(framed_msg)
 
 ---
 
-### 4. ⏳ **Connection/Session Manager** [TODO]
+### 4. ✅ **Connection/Session Manager** [DONE]
 
 **Goal**: High-level API that combines handshake and transport in one object.
 
 **Tasks**:
-- [ ] Create `noiseframework/session.py` module
-- [ ] Implement `NoiseSession` class
-- [ ] Auto-transition from handshake to transport
-- [ ] Add convenience methods for common patterns
-- [ ] Support both sync and async
-- [ ] Add examples
-- [ ] Add comprehensive tests
+- [x] Create `noiseframework/connection.py` module
+- [x] Implement `NoiseConnection` class (sync)
+- [x] Implement `AsyncNoiseConnection` class (async)
+- [x] Auto-transition from handshake to transport
+- [x] Add convenience methods for common patterns
+- [x] Support both sync and async
+- [x] Add examples
+- [x] Add comprehensive tests
 
 **Target Files**:
-- New: `noiseframework/session.py`
-- New: `examples/session_example.py`
-- New: `tests/test_session.py`
-- Update: `noiseframework/__init__.py` (add to exports)
-
-**API Design**:
-```python
-class NoiseSession:
-    def __init__(self, pattern: str, role: str, **kwargs)
-    def send(self, data: bytes) -> bytes
-    def receive(self, data: bytes) -> Optional[bytes]
-    @property
-    def is_handshake_complete(self) -> bool
-    @property
-    def remote_static_key(self) -> Optional[bytes]
-```
+- New: `noiseframework/connection.py` (~654 lines)
+- New: `examples/connection_example.py` (~290 lines)
+- New: `tests/test_connection.py` (25 tests, 100% pass rate)
+- Modified: `noiseframework/__init__.py` (added 2 exports)
+- Updated: `README.md` (connection section added)
+- Updated: `docs/API.md` (complete connection API documentation)
 
 **Implementation Notes**:
+
+**Import Statements**:
+```python
+# Synchronous connection
+from noiseframework import NoiseConnection
+
+# Asynchronous connection
+from noiseframework import AsyncNoiseConnection
 ```
-[When completed, document here:]
-- Complete class signature
-- All methods and their exact signatures
-- Usage examples for common scenarios
-- How it differs from NoiseHandshake + NoiseTransport
-- When to use Session vs low-level API
-- Thread safety considerations
+
+**NoiseConnection API** (Synchronous):
+```python
+# Constructor
+conn = NoiseConnection(
+    pattern: str,                              # e.g., "Noise_XX_25519_ChaChaPoly_SHA256"
+    role: str,                                 # "initiator" or "responder"
+    static_private_key: Optional[bytes] = None,  # Pre-generated keys (optional)
+    static_public_key: Optional[bytes] = None,
+    remote_static_public_key: Optional[bytes] = None,  # Known remote key (for IK, NK)
+    max_message_size: int = 16*1024*1024,      # 16 MB default
+    logger: Optional[logging.Logger] = None
+)
+
+# Connection methods
+conn.connect(address: Tuple[str, int])  # Initiator: connect and perform handshake
+conn.accept(client_socket: socket.socket)  # Responder: accept and perform handshake
+conn.send(plaintext: bytes)  # Send encrypted message
+plaintext = conn.receive()  # Receive and decrypt message (returns bytes)
+conn.close()  # Close connection
+
+# Properties (sync access, no await needed)
+is_connected = conn.is_connected  # bool
+remote_key = conn.remote_static_public_key  # Optional[bytes]
+local_key = conn.local_static_public_key  # Optional[bytes]
+
+# Context manager support
+with NoiseConnection(pattern, role) as conn:
+    conn.connect(address)
+    conn.send(b"data")
+    response = conn.receive()
+# Automatically closes on exit
 ```
+
+**AsyncNoiseConnection API** (Asynchronous):
+```python
+# Constructor (same as sync)
+conn = AsyncNoiseConnection(
+    pattern: str,
+    role: str,
+    static_private_key: Optional[bytes] = None,
+    static_public_key: Optional[bytes] = None,
+    remote_static_public_key: Optional[bytes] = None,
+    max_message_size: int = 16*1024*1024,
+    logger: Optional[logging.Logger] = None
+)
+
+# Async connection methods (all require await)
+await conn.connect(address: Tuple[str, int])  # Initiator
+await conn.accept_streams(reader: StreamReader, writer: StreamWriter)  # Responder
+await conn.send(plaintext: bytes)
+plaintext = await conn.receive()  # Returns bytes
+await conn.close()
+
+# Properties (sync access, no await)
+is_connected = conn.is_connected  # bool
+remote_key = conn.remote_static_public_key  # Optional[bytes]
+local_key = conn.local_static_public_key  # Optional[bytes]
+
+# Async context manager support
+async with AsyncNoiseConnection(pattern, role) as conn:
+    await conn.connect(address)
+    await conn.send(b"data")
+    response = await conn.receive()
+# Automatically closes on exit
+```
+
+**Complete Working Example (Sync)**:
+```python
+from noiseframework import NoiseConnection
+import socket
+import threading
+
+def server():
+    server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_sock.bind(("localhost", 9999))
+    server_sock.listen(1)
+    client_sock, _ = server_sock.accept()
+    
+    with NoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "responder") as conn:
+        conn.accept(client_sock)  # Automatic handshake
+        data = conn.receive()
+        conn.send(b"Echo: " + data)
+    
+    server_sock.close()
+
+# Start server in background
+threading.Thread(target=server, daemon=True).start()
+
+# Client
+with NoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "initiator") as conn:
+    conn.connect(("localhost", 9999))  # Automatic handshake
+    conn.send(b"Hello!")
+    response = conn.receive()
+    print(response)  # b"Echo: Hello!"
+```
+
+**Complete Working Example (Async)**:
+```python
+import asyncio
+from noiseframework import AsyncNoiseConnection
+
+async def handle_client(reader, writer):
+    async with AsyncNoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "responder") as conn:
+        await conn.accept_streams(reader, writer)  # Automatic handshake
+        data = await conn.receive()
+        await conn.send(b"Echo: " + data)
+
+async def main():
+    # Start server
+    server = await asyncio.start_server(handle_client, "localhost", 9999)
+    
+    # Client
+    async with AsyncNoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "initiator") as conn:
+        await conn.connect(("localhost", 9999))  # Automatic handshake
+        await conn.send(b"Hello!")
+        response = await conn.receive()
+        print(response)  # b"Echo: Hello!"
+    
+    server.close()
+    await server.wait_closed()
+
+asyncio.run(main())
+```
+
+**Key Features**:
+- **Automatic Handshake**: No manual `write_message()`/`read_message()` calls
+- **Automatic Transport Transition**: Seamlessly switches after handshake
+- **Automatic Framing**: Built-in length-prefixed message framing
+- **Connection Lifecycle**: `connect()`, `accept()`, `send()`, `receive()`, `close()`
+- **Context Manager**: Automatic cleanup with `with` statement
+- **Error Handling**: Clear exceptions (ValidationError, HandshakeError, TransportError)
+- **Identity Management**: Access to local and remote static public keys
+- **Custom Keys**: Support for pre-generated keypairs (persistent identity)
+- **Both Sync & Async**: Identical APIs, choose based on application needs
+
+**When to Use**:
+- **Use NoiseConnection when**: You want simple, high-level API for complete connections
+- **Use NoiseHandshake + NoiseTransport when**: You need fine control over handshake steps or custom message handling
+- **Use Framing separately when**: You're implementing custom protocols on top of Noise
+
+**Thread Safety**:
+- Each connection instance is **not** thread-safe
+- Use separate connections per thread
+- Or protect with locks if sharing across threads
+
+**Performance Characteristics**:
+- Automatic handshake detection: O(1) per message
+- Message overhead: 4 bytes (framing) + 16 bytes (AEAD tag)
+- Zero-copy for transport operations
+- Async version uses executor for crypto operations (non-blocking I/O)
+
+**Test Coverage**: 25 tests in `tests/test_connection.py` covering:
+- Connection initialization (initiator/responder, custom keys)
+- Error handling (invalid role, not connected, wrong methods)
+- Context managers (sync and async)
+- Full communication (handshake + multiple messages)
+- Remote key access
+- Large messages (100 KB+)
+- Both sync and async versions
+
+**Documentation**:
+- Complete connection section in `README.md` with usage examples
+- Full API reference in `docs/API.md`
+- Working examples in `examples/connection_example.py` (sync, async, advanced)
+- See `docs/CHANGELOG.md` for detailed changes
+
+---
 
 ---
 

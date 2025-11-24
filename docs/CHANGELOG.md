@@ -8,6 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **High-level connection/session manager API**:
+  - Created `noiseframework/connection.py` module (~654 lines)
+  - `NoiseConnection` class for synchronous high-level connections
+  - `AsyncNoiseConnection` class for asynchronous connections with async/await
+  - Automatic handshake execution (no manual `write_message()`/`read_message()` calls)
+  - Automatic transition from handshake to transport mode
+  - Built-in length-prefixed message framing
+  - Connection lifecycle: `connect()`, `accept()`, `send()`, `receive()`, `close()`
+  - Context manager support for automatic cleanup (`with` and `async with` statements)
+  - Properties for connection state and remote identity: `is_connected`, `remote_static_public_key`, `local_static_public_key`
+  - Support for custom pre-generated keys (persistent identity)
+  - Clear error handling with ValidationError, HandshakeError, and TransportError
+  - Configurable maximum message size (default 16 MB)
+  - Optional logging support
+- `examples/connection_example.py` with 3 comprehensive examples:
+  - Synchronous client/server example using `NoiseConnection`
+  - Asynchronous client/server example using `AsyncNoiseConnection` with `asyncio`
+  - Advanced example demonstrating custom keys and identity verification
+- `tests/test_connection.py` with 25 comprehensive tests (100% pass rate):
+  - Connection initialization and role validation
+  - Error handling (invalid role, not connected, wrong methods for role)
+  - Context managers (sync and async)
+  - Full communication (handshake + message exchange)
+  - Multiple message exchange
+  - Remote static key access
+  - Large message handling (100 KB+)
+  - Both synchronous and asynchronous versions
+- Exported `NoiseConnection` and `AsyncNoiseConnection` from main package
 - **Better error messages with custom exception hierarchy**:
   - Created `noiseframework/exceptions.py` with 14 custom exception classes
   - `NoiseError` base class for all framework exceptions (enables catching all with single except clause)

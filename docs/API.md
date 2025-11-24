@@ -4,7 +4,10 @@ Complete API documentation for NoiseFramework.
 
 ## Table of Contents
 
-- [High-Level API](#high-level-api)
+- [High-Level Connection API](#high-level-connection-api)
+  - [NoiseConnection](#noiseconnection)
+  - [AsyncNoiseConnection](#asyncnoiseconnection)
+- [Core Handshake & Transport API](#core-handshake--transport-api)
   - [NoiseHandshake](#noisehandshake)
   - [NoiseTransport](#noisetransport)
 - [Exception Handling](#exception-handling)
@@ -40,9 +43,400 @@ Complete API documentation for NoiseFramework.
 
 ---
 
-## High-Level API
+## High-Level Connection API
 
-The high-level API provides simple interfaces for performing Noise handshakes and encrypted communication.
+The Connection API provides the simplest way to establish secure connections. It automatically handles handshakes, transport mode transitions, and message framing in a single interface.
+
+### NoiseConnection
+
+High-level synchronous connection manager that combines handshake, transport, and framing.
+
+#### Import
+
+```python
+from noiseframework import NoiseConnection
+```
+
+#### Constructor
+
+```python
+NoiseConnection(
+    pattern: str,
+    role: str,
+    static_private_key: Optional[bytes] = None,
+    static_public_key: Optional[bytes] = None,
+    remote_static_public_key: Optional[bytes] = None,
+    max_message_size: int = 16777216,
+    logger: Optional[logging.Logger] = None
+) -> NoiseConnection
+```
+
+Create a new Noise connection.
+
+**Parameters:**
+- `pattern` (str): Noise pattern string (e.g., `"Noise_XX_25519_ChaChaPoly_SHA256"`)
+- `role` (str): Connection role - `"initiator"` or `"responder"`
+- `static_private_key` (Optional[bytes]): Pre-generated static private key (32 bytes for Curve25519)
+- `static_public_key` (Optional[bytes]): Pre-generated static public key (32 bytes for Curve25519)
+- `remote_static_public_key` (Optional[bytes]): Known remote static public key (required for IK, NK patterns)
+- `max_message_size` (int): Maximum allowed message size in bytes (default: 16 MB)
+- `logger` (Optional[logging.Logger]): Custom logger for connection operations
+
+**Raises:**
+- `ValidationError`: If role is invalid or parameters are inconsistent
+- `UnsupportedPatternError`: If pattern string is invalid
+
+**Examples:**
+```python
+# Initiator with auto-generated keys
+conn = NoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "initiator")
+
+# Responder with custom keys (persistent identity)
+conn = NoiseConnection(
+    "Noise_XX_25519_ChaChaPoly_SHA256",
+    "responder",
+    static_private_key=my_private_key,
+    static_public_key=my_public_key
+)
+
+# Initiator with known server key (IK pattern)
+conn = NoiseConnection(
+    "Noise_IK_25519_ChaChaPoly_SHA256",
+    "initiator",
+    remote_static_public_key=server_public_key
+)
+```
+
+#### Methods
+
+##### `connect(address: Tuple[str, int]) -> None`
+
+Connect to remote peer and perform handshake (initiator only).
+
+**Parameters:**
+- `address` (Tuple[str, int]): Target address as `(hostname, port)`
+
+**Raises:**
+- `ValidationError`: If called on a responder
+- `HandshakeError`: If handshake fails
+- `TransportError`: If connection fails
+
+**Example:**
+```python
+conn = NoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "initiator")
+conn.connect(("example.com", 9999))  # Handshake happens automatically
+```
+
+##### `accept(client_socket: socket.socket) -> None`
+
+Accept connection from client and perform handshake (responder only).
+
+**Parameters:**
+- `client_socket` (socket.socket): Already-accepted client socket
+
+**Raises:**
+- `ValidationError`: If called on an initiator
+- `HandshakeError`: If handshake fails
+- `TransportError`: If connection fails
+
+**Example:**
+```python
+server_sock = socket.socket()
+server_sock.bind(("0.0.0.0", 9999))
+server_sock.listen(1)
+client_sock, _ = server_sock.accept()
+
+conn = NoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "responder")
+conn.accept(client_sock)  # Handshake happens automatically
+```
+
+##### `send(plaintext: bytes) -> None`
+
+Encrypt and send a message.
+
+**Parameters:**
+- `plaintext` (bytes): Message to encrypt and send
+
+**Raises:**
+- `TransportError`: If not connected or send fails
+- `FramingError`: If message exceeds max_message_size
+
+**Example:**
+```python
+conn.send(b"Hello, secure world!")
+```
+
+##### `receive() -> bytes`
+
+Receive and decrypt a message.
+
+**Returns:**
+- `bytes`: Decrypted plaintext message
+
+**Raises:**
+- `TransportError`: If not connected or receive fails
+- `AuthenticationError`: If decryption/authentication fails
+- `FramingError`: If message exceeds max_message_size
+
+**Example:**
+```python
+plaintext = conn.receive()
+print(plaintext)  # b"Hello, secure world!"
+```
+
+##### `close() -> None`
+
+Close the connection and release resources.
+
+**Example:**
+```python
+conn.close()
+```
+
+#### Properties
+
+##### `is_connected: bool`
+
+Check if connection is established and handshake is complete.
+
+**Example:**
+```python
+if conn.is_connected:
+    conn.send(b"Data")
+```
+
+##### `remote_static_public_key: Optional[bytes]`
+
+Get the remote peer's static public key (available after handshake).
+
+**Returns:**
+- `Optional[bytes]`: Remote public key (32 bytes for Curve25519), or None if not available
+
+**Example:**
+```python
+remote_key = conn.remote_static_public_key
+if remote_key:
+    print(f"Remote identity: {remote_key.hex()}")
+```
+
+##### `local_static_public_key: Optional[bytes]`
+
+Get the local static public key.
+
+**Returns:**
+- `Optional[bytes]`: Local public key (32 bytes for Curve25519), or None if not set
+
+**Example:**
+```python
+local_key = conn.local_static_public_key
+print(f"Our identity: {local_key.hex()}")
+```
+
+#### Context Manager Support
+
+NoiseConnection supports context managers for automatic cleanup:
+
+```python
+# Automatic cleanup with 'with' statement
+with NoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "initiator") as conn:
+    conn.connect(("example.com", 9999))
+    conn.send(b"Data")
+    response = conn.receive()
+# Connection automatically closed here
+```
+
+#### Complete Example
+
+```python
+import socket
+import threading
+from noiseframework import NoiseConnection
+
+def server():
+    server_sock = socket.socket()
+    server_sock.bind(("localhost", 9999))
+    server_sock.listen(1)
+    client_sock, _ = server_sock.accept()
+    
+    with NoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "responder") as conn:
+        conn.accept(client_sock)
+        
+        # Exchange messages
+        data = conn.receive()
+        print(f"Server received: {data}")
+        conn.send(b"Echo: " + data)
+    
+    server_sock.close()
+
+# Start server
+threading.Thread(target=server, daemon=True).start()
+
+# Client
+with NoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "initiator") as conn:
+    conn.connect(("localhost", 9999))
+    
+    conn.send(b"Hello!")
+    response = conn.receive()
+    print(f"Client received: {response}")
+```
+
+---
+
+### AsyncNoiseConnection
+
+High-level asynchronous connection manager with the same API as NoiseConnection but using async/await.
+
+#### Import
+
+```python
+from noiseframework import AsyncNoiseConnection
+```
+
+#### Constructor
+
+```python
+AsyncNoiseConnection(
+    pattern: str,
+    role: str,
+    static_private_key: Optional[bytes] = None,
+    static_public_key: Optional[bytes] = None,
+    remote_static_public_key: Optional[bytes] = None,
+    max_message_size: int = 16777216,
+    logger: Optional[logging.Logger] = None
+) -> AsyncNoiseConnection
+```
+
+Parameters are identical to `NoiseConnection`.
+
+#### Methods
+
+All methods are async and require `await`:
+
+##### `await connect(address: Tuple[str, int]) -> None`
+
+Connect to remote peer and perform handshake (initiator only).
+
+**Example:**
+```python
+conn = AsyncNoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "initiator")
+await conn.connect(("example.com", 9999))
+```
+
+##### `await accept_streams(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None`
+
+Accept connection using asyncio streams and perform handshake (responder only).
+
+**Parameters:**
+- `reader` (asyncio.StreamReader): Async stream reader
+- `writer` (asyncio.StreamWriter): Async stream writer
+
+**Raises:**
+- `ValidationError`: If called on an initiator
+- `HandshakeError`: If handshake fails
+
+**Example:**
+```python
+async def handle_client(reader, writer):
+    conn = AsyncNoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "responder")
+    await conn.accept_streams(reader, writer)
+    # ... use conn ...
+```
+
+##### `await send(plaintext: bytes) -> None`
+
+Encrypt and send a message.
+
+**Example:**
+```python
+await conn.send(b"Hello, async world!")
+```
+
+##### `await receive() -> bytes`
+
+Receive and decrypt a message.
+
+**Returns:**
+- `bytes`: Decrypted plaintext message
+
+**Example:**
+```python
+plaintext = await conn.receive()
+```
+
+##### `await close() -> None`
+
+Close the connection and release resources.
+
+**Example:**
+```python
+await conn.close()
+```
+
+#### Properties
+
+Properties are accessed synchronously (no await):
+
+##### `is_connected: bool`
+
+Check if connection is established.
+
+##### `remote_static_public_key: Optional[bytes]`
+
+Get the remote peer's static public key.
+
+##### `local_static_public_key: Optional[bytes]`
+
+Get the local static public key.
+
+#### Async Context Manager Support
+
+AsyncNoiseConnection supports async context managers:
+
+```python
+async with AsyncNoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "initiator") as conn:
+    await conn.connect(("example.com", 9999))
+    await conn.send(b"Data")
+    response = await conn.receive()
+# Connection automatically closed here
+```
+
+#### Complete Async Example
+
+```python
+import asyncio
+from noiseframework import AsyncNoiseConnection
+
+async def handle_client(reader, writer):
+    async with AsyncNoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "responder") as conn:
+        await conn.accept_streams(reader, writer)
+        
+        data = await conn.receive()
+        print(f"Server received: {data}")
+        await conn.send(b"Echo: " + data)
+
+async def main():
+    # Start server
+    server = await asyncio.start_server(handle_client, "localhost", 9999)
+    
+    # Client
+    async with AsyncNoiseConnection("Noise_XX_25519_ChaChaPoly_SHA256", "initiator") as conn:
+        await conn.connect(("localhost", 9999))
+        
+        await conn.send(b"Hello, async!")
+        response = await conn.receive()
+        print(f"Client received: {response}")
+    
+    server.close()
+    await server.wait_closed()
+
+asyncio.run(main())
+```
+
+---
+
+## Core Handshake & Transport API
+
+The core API provides fine-grained control over handshakes and transport encryption for advanced use cases.
 
 ### NoiseHandshake
 
