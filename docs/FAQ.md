@@ -285,9 +285,11 @@ def recv_frame(sock):
 **3. Error handling:**
 
 ```python
+from noiseframework.exceptions import AuthenticationError
+
 try:
     plaintext = transport.receive(ciphertext)
-except ValueError as e:
+except AuthenticationError as e:
     print(f"Authentication failed: {e}")
     # Handle tampering or corruption
 ```
@@ -365,7 +367,7 @@ handshake.set_static_keypair(private, public)
 
 ## Troubleshooting
 
-### "ValueError: Role not set"
+### "RoleNotSetError: Role not set"
 
 **Problem:** Forgot to call `set_as_initiator()` or `set_as_responder()`
 
@@ -374,22 +376,22 @@ handshake.set_static_keypair(private, public)
 ```python
 handshake = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
 handshake.set_as_initiator()  # or set_as_responder()
-handshake.start()
+handshake.initialize()
 ```
 
-### "ValueError: Handshake not started"
+### "Handshake not initialized"
 
-**Problem:** Forgot to call `start()`
+**Problem:** Forgot to call `initialize()`
 
 **Solution:**
 
 ```python
 handshake.set_as_initiator()
 handshake.set_static_keypair(private, public)
-handshake.start()  # Must call before write_message/read_message
+handshake.initialize()  # Must call before write_message/read_message
 ```
 
-### "ValueError: Decryption failed"
+### "AuthenticationError: Decryption failed"
 
 **Possible causes:**
 
@@ -397,7 +399,7 @@ handshake.start()  # Must call before write_message/read_message
    ```python
    # Attacker modified ciphertext
    ciphertext = ciphertext[:-1] + b"\x00"
-   transport.receive(ciphertext)  # ValueError!
+   transport.receive(ciphertext)  # AuthenticationError!
    ```
 
 2. **Wrong nonce:** Messages received out of order
@@ -420,16 +422,18 @@ handshake.start()  # Must call before write_message/read_message
 **Debugging:**
 
 ```python
+from noiseframework.exceptions import AuthenticationError
+
 try:
     plaintext = transport.receive(ciphertext)
-except ValueError as e:
+except AuthenticationError as e:
     print(f"Decryption failed: {e}")
     print(f"Nonce: {transport.get_receive_nonce()}")
     print(f"Ciphertext length: {len(ciphertext)}")
     # Check for tampering, corruption, or protocol errors
 ```
 
-### "ValueError: Invalid pattern string"
+### "UnsupportedPatternError: Invalid pattern string"
 
 **Problem:** Pattern string malformed
 
