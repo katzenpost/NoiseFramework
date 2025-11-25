@@ -90,7 +90,7 @@ The implementation strictly follows the [Noise Protocol Framework specification]
 #### `NoiseHandshake`
 - **Responsibility:** Orchestrate complete handshake flow
 - **State:** Tracks handshake progress, keys, role
-- **Methods:** `start()`, `write_message()`, `read_message()`, `to_transport()`
+- **Methods:** `set_as_initiator()`, `set_as_responder()`, `initialize()`, `write_message()`, `read_message()`, `to_transport()`
 - **Dependencies:** Pattern parser, SymmetricState, DH functions
 
 ```python
@@ -357,8 +357,10 @@ At Split:
 
 ```
 [Created] 
-    ↓ start()
-[Started]
+    ↓ set_as_initiator() / set_as_responder()
+[Role Set]
+    ↓ initialize()
+[Initialized]
     ↓ write_message() / read_message()
 [In Progress] ← (loop for pattern length)
     ↓ final message processed
