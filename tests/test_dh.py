@@ -1,6 +1,13 @@
 """Tests for Diffie-Hellman functions."""
 
 import pytest
+from noiseframework.exceptions import (
+    AuthenticationError, CryptoError, InvalidKeySizeError,
+    UnsupportedPrimitiveError, UnsupportedPatternError,
+    ValidationError, RoleNotSetError, RoleAlreadySetError,
+    WrongTurnError, HandshakeCompleteError, MissingKeyError,
+    NoKeySetError, NonceOverflowError
+)
 from noiseframework.crypto.dh import Curve25519, Curve448, get_dh_function
 
 
@@ -55,7 +62,7 @@ class TestCurve25519:
         dh = Curve25519()
         _, public = dh.generate_keypair()
 
-        with pytest.raises(ValueError, match="Private key must be 32 bytes"):
+        with pytest.raises(InvalidKeySizeError):
             dh.dh(b"short", public)
 
     def test_dh_invalid_public_key_size(self) -> None:
@@ -63,7 +70,7 @@ class TestCurve25519:
         dh = Curve25519()
         private, _ = dh.generate_keypair()
 
-        with pytest.raises(ValueError, match="Public key must be 32 bytes"):
+        with pytest.raises(InvalidKeySizeError):
             dh.dh(private, b"short")
 
 
@@ -118,7 +125,7 @@ class TestCurve448:
         dh = Curve448()
         _, public = dh.generate_keypair()
 
-        with pytest.raises(ValueError, match="Private key must be 56 bytes"):
+        with pytest.raises(InvalidKeySizeError):
             dh.dh(b"short", public)
 
     def test_dh_invalid_public_key_size(self) -> None:
@@ -126,7 +133,7 @@ class TestCurve448:
         dh = Curve448()
         private, _ = dh.generate_keypair()
 
-        with pytest.raises(ValueError, match="Public key must be 56 bytes"):
+        with pytest.raises(InvalidKeySizeError):
             dh.dh(private, b"short")
 
 
@@ -147,5 +154,7 @@ class TestGetDHFunction:
 
     def test_unknown_dh_function(self) -> None:
         """Test unknown DH function raises error."""
-        with pytest.raises(ValueError, match="Unknown DH function"):
+        with pytest.raises(UnsupportedPrimitiveError):
             get_dh_function("unknown")
+
+

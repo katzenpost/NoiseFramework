@@ -90,7 +90,7 @@ The implementation strictly follows the [Noise Protocol Framework specification]
 #### `NoiseHandshake`
 - **Responsibility:** Orchestrate complete handshake flow
 - **State:** Tracks handshake progress, keys, role
-- **Methods:** `start()`, `write_message()`, `read_message()`, `to_transport()`
+- **Methods:** `set_as_initiator()`, `set_as_responder()`, `initialize()`, `write_message()`, `read_message()`, `to_transport()`
 - **Dependencies:** Pattern parser, SymmetricState, DH functions
 
 ```python
@@ -313,7 +313,7 @@ Initiator                           Responder
                                            → Parse s
                                            → DH(re, s) → se
 
-10. handshake_finished = True       11. handshake_finished = True
+10. handshake_complete = True        11. handshake_complete = True
 11. to_transport()                   12. to_transport()
 ```
 
@@ -357,8 +357,10 @@ At Split:
 
 ```
 [Created] 
-    ↓ start()
-[Started]
+    ↓ set_as_initiator() / set_as_responder()
+[Role Set]
+    ↓ initialize()
+[Initialized]
     ↓ write_message() / read_message()
 [In Progress] ← (loop for pattern length)
     ↓ final message processed
@@ -368,21 +370,21 @@ At Split:
 ```
 
 **State Transitions:**
-- Invalid transitions raise `ValueError`
-- State is tracked via `message_index` and `handshake_finished`
+- Invalid transitions raise custom exceptions (`RoleNotSetError`, `HandshakeCompleteError`, etc.)
+- State is tracked via `message_index` and `handshake_complete`
 
 ### Error States
 
 ```python
-# Common error conditions:
+# Common error conditions (custom exceptions with helpful messages):
 if not self.role:
-    raise ValueError("Role not set - call set_as_initiator/responder")
+    raise RoleNotSetError("Role not set - call set_as_initiator/responder")
 
 if self.handshake_complete:
-    raise ValueError("Handshake already complete")
+    raise HandshakeCompleteError("Handshake already complete")
 
 if self.message_index >= len(self.message_patterns):
-    raise ValueError("Handshake already finished")
+    raise HandshakeCompleteError("Handshake already finished")
 ```
 
 ---

@@ -1,6 +1,13 @@
 """Tests for Noise handshake state machine."""
 
 import pytest
+from noiseframework.exceptions import (
+    AuthenticationError, CryptoError, InvalidKeySizeError,
+    UnsupportedPrimitiveError, UnsupportedPatternError,
+    ValidationError, RoleNotSetError, RoleAlreadySetError,
+    WrongTurnError, HandshakeCompleteError, MissingKeyError,
+    NoKeySetError, NonceOverflowError
+)
 from noiseframework.noise.handshake import NoiseHandshake, Role
 
 
@@ -21,7 +28,7 @@ class TestNoiseHandshakeInit:
 
     def test_init_invalid_pattern(self) -> None:
         """Test that invalid pattern raises error."""
-        with pytest.raises(ValueError):
+        with pytest.raises((RoleNotSetError, RoleAlreadySetError, WrongTurnError, HandshakeCompleteError, ValidationError, UnsupportedPatternError, MissingKeyError, NoKeySetError, InvalidKeySizeError)):
             NoiseHandshake("Invalid_Pattern")
 
     def test_set_as_initiator(self) -> None:
@@ -43,7 +50,7 @@ class TestNoiseHandshakeInit:
         hs = NoiseHandshake("Noise_NN_25519_ChaChaPoly_SHA256")
         hs.set_as_initiator()
 
-        with pytest.raises(ValueError, match="Role already set"):
+        with pytest.raises(RoleAlreadySetError):
             hs.set_as_responder()
 
     def test_generate_static_keypair(self) -> None:
@@ -71,10 +78,10 @@ class TestNoiseHandshakeInit:
         """Test that invalid key sizes raise error."""
         hs = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
 
-        with pytest.raises(ValueError, match="Private key must be 32 bytes"):
+        with pytest.raises(ValidationError):
             hs.set_static_keypair(b"short", b"P" * 32)
 
-        with pytest.raises(ValueError, match="Public key must be 32 bytes"):
+        with pytest.raises(ValidationError):
             hs.set_static_keypair(b"p" * 32, b"short")
 
     def test_set_remote_static_public_key(self) -> None:
@@ -90,7 +97,7 @@ class TestNoiseHandshakeInit:
         """Test that invalid remote key size raises error."""
         hs = NoiseHandshake("Noise_NK_25519_ChaChaPoly_SHA256")
 
-        with pytest.raises(ValueError, match="Public key must be 32 bytes"):
+        with pytest.raises(ValidationError):
             hs.set_remote_static_public_key(b"short")
 
 
@@ -298,14 +305,14 @@ class TestNoiseHandshakeErrors:
         """Test that writing without role raises error."""
         hs = NoiseHandshake("Noise_NN_25519_ChaChaPoly_SHA256")
 
-        with pytest.raises(ValueError, match="Role not set"):
+        with pytest.raises(RoleNotSetError):
             hs.write_message()
 
     def test_read_before_role_set(self) -> None:
         """Test that reading without role raises error."""
         hs = NoiseHandshake("Noise_NN_25519_ChaChaPoly_SHA256")
 
-        with pytest.raises(ValueError, match="Role not set"):
+        with pytest.raises(RoleNotSetError):
             hs.read_message(b"test")
 
     def test_write_when_not_our_turn(self) -> None:
@@ -319,7 +326,7 @@ class TestNoiseHandshakeErrors:
         resp.initialize()
 
         # Responder tries to send first
-        with pytest.raises(ValueError, match="Not our turn"):
+        with pytest.raises(WrongTurnError):
             resp.write_message()
 
     def test_read_when_not_our_turn(self) -> None:
@@ -329,7 +336,7 @@ class TestNoiseHandshakeErrors:
         init.initialize()
 
         # Initiator tries to read first
-        with pytest.raises(ValueError, match="Not our turn"):
+        with pytest.raises(WrongTurnError):
             init.read_message(b"test")
 
     def test_write_after_complete(self) -> None:
@@ -349,7 +356,7 @@ class TestNoiseHandshakeErrors:
         init.read_message(msg2)
 
         # Try to write after complete
-        with pytest.raises(ValueError, match="already complete"):
+        with pytest.raises(HandshakeCompleteError):
             init.write_message()
 
     def test_to_transport_before_complete(self) -> None:
@@ -358,7 +365,7 @@ class TestNoiseHandshakeErrors:
         hs.set_as_initiator()
         hs.initialize()
 
-        with pytest.raises(ValueError, match="not yet complete"):
+        with pytest.raises(HandshakeCompleteError):
             hs.to_transport()
 
     def test_get_handshake_hash_before_complete(self) -> None:
@@ -367,7 +374,7 @@ class TestNoiseHandshakeErrors:
         hs.set_as_initiator()
         hs.initialize()
 
-        with pytest.raises(ValueError, match="not yet complete"):
+        with pytest.raises(HandshakeCompleteError):
             hs.get_handshake_hash()
 
     def test_handshake_hash_same_both_sides(self) -> None:
@@ -455,3 +462,5 @@ class TestMultiplePatterns:
 
         assert init.handshake_complete
         assert resp.handshake_complete
+
+

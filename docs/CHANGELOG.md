@@ -5,6 +5,153 @@ All notable changes to NoiseFramework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-11-25
+
+### Added
+- **Fallback Pattern Support for graceful handshake degradation**:
+  - Implements Noise Protocol Framework Section 10.2 fallback patterns
+  - Extended pattern parser to support `fallback` modifier: `Noise_XXfallback_25519_ChaChaPoly_SHA256`
+  - Added `NoiseHandshake.start_fallback(remote_ephemeral_public_key: bytes)` method
+  - Responder-only operation: triggered when initiator's first message cannot be decrypted
+  - Preserves initiator's ephemeral key, switches pattern, re-initializes symmetric state
+  - Fallback transformation: moves initiator's first message to pre-message (e.g., XX → XXfallback)
+  - Fallback validation: first message must be "e", "s", or "e, s" (no DH operations)
+  - Role reversal: responder becomes effective initiator in fallback pattern (sends first)
+  - Custom turn-checking logic for fallback patterns (`is_fallback` flag)
+  - Extended `_process_pre_messages()` to handle ephemeral ("e") pre-messages
+  - **Noise Pipes protocol**: IK → XXfallback (when wrong static key or outdated PSK)
+  - Async fallback support: `AsyncNoiseHandshake.start_fallback(remote_ephemeral_public_key: bytes)`
+  - Error handling: validates responder role, handshake not complete, key size matching
+- `examples/fallback_example.py` demonstrating Noise Pipes protocol:
+  - Alice attempts IK handshake with wrong/outdated Bob static key
+  - Bob detects decryption failure and extracts Alice's ephemeral key
+  - Bob initiates fallback to XXfallback using `start_fallback()`
+  - Alice switches to XXfallback and reuses ephemeral keys
+  - Both complete XXfallback handshake and establish transport channels
+  - Educational comments explaining fallback mechanics and use cases
+- `tests/test_fallback.py` with 21 comprehensive tests (100% pass rate):
+  - Fallback pattern parsing: XXfallback, IKfallback, NKfallback, invalid modifiers (5 tests)
+  - Token transformation: XX → XXfallback, validation that IK/NK cannot directly use fallback (5 tests)
+  - Handshake setup: responder-only, completion checks, key validation, ephemeral preservation (6 tests)
+  - Full handshakes: IK→XXfallback (Noise Pipes), normal XX comparison (2 tests)
+  - Async support: async start_fallback() (1 test)
+  - Error cases: invalid patterns, multiple fallback calls (2 tests)
+- **Pre-Shared Key (PSK) support for quantum-resistant patterns**:
+  - Extended pattern parser to support PSK modifiers: `psk0`, `psk1`, `psk2`, `psk3`, `psk4`
+  - PSK patterns format: `Noise_XXpsk3_25519_ChaChaPoly_SHA256` (base pattern + PSK modifier)
+  - Added `NoiseHandshake.set_psk(psk: bytes)` method to configure 32-byte pre-shared keys
+  - PSK validation: ensures pattern uses PSK modifier and key is exactly 32 bytes
+  - PSK token processing integrated into handshake message flow (automatic mixing via MixKeyAndHash)
+  - PSK mixing positions: `psk0` before first message, `psk1-4` after specified message
+  - Async PSK support: `AsyncNoiseHandshake.set_psk(psk: bytes)` with async/await compatibility
+  - Security benefits: quantum resistance, additional authentication layer, pre-computation resistance
+  - All PSK patterns work with existing transport and framing infrastructure
+- `examples/psk_example.py` with 3 comprehensive PSK demonstrations:
+  - **NNpsk0**: Anonymous pattern with PSK mixed before first message (2-message handshake)
+  - **XXpsk3**: Mutual authentication with PSK after third message (most common PSK pattern)
+  - **IKpsk2**: Known responder identity with PSK after second message
+  - Educational section explaining quantum resistance and PSK security benefits
+  - Use cases: IoT devices, enterprise VPNs, defense systems, embedded systems
+- `tests/test_psk.py` with 22 comprehensive tests (100% pass rate):
+  - PSK pattern parsing tests (valid patterns, all modifiers, invalid modifiers)
+  - PSK token placement verification (psk0-4 positions)
+  - PSK validation tests (size requirements, pattern requirements)
+  - Complete handshake tests for NNpsk0, XXpsk3, IKpsk2 patterns
+  - PSK mismatch authentication failure test
+  - Transport encryption after PSK handshake
+  - Multiple message exchange tests
+  - Payload handling in PSK handshakes
+- **High-level connection/session manager API**:
+  - Created `noiseframework/connection.py` module (~654 lines)
+  - `NoiseConnection` class for synchronous high-level connections
+  - `AsyncNoiseConnection` class for asynchronous connections with async/await
+  - Automatic handshake execution (no manual `write_message()`/`read_message()` calls)
+  - Automatic transition from handshake to transport mode
+  - Built-in length-prefixed message framing
+  - Connection lifecycle: `connect()`, `accept()`, `send()`, `receive()`, `close()`
+  - Context manager support for automatic cleanup (`with` and `async with` statements)
+  - Properties for connection state and remote identity: `is_connected`, `remote_static_public_key`, `local_static_public_key`
+  - Support for custom pre-generated keys (persistent identity)
+  - Clear error handling with ValidationError, HandshakeError, and TransportError
+  - Configurable maximum message size (default 16 MB)
+  - Optional logging support
+- `examples/connection_example.py` with 3 comprehensive examples:
+  - Synchronous client/server example using `NoiseConnection`
+  - Asynchronous client/server example using `AsyncNoiseConnection` with `asyncio`
+  - Advanced example demonstrating custom keys and identity verification
+- `tests/test_connection.py` with 25 comprehensive tests (100% pass rate):
+  - Connection initialization and role validation
+  - Error handling (invalid role, not connected, wrong methods for role)
+  - Context managers (sync and async)
+  - Full communication (handshake + message exchange)
+  - Multiple message exchange
+  - Remote static key access
+  - Large message handling (100 KB+)
+  - Both synchronous and asynchronous versions
+- Exported `NoiseConnection` and `AsyncNoiseConnection` from main package
+- **Better error messages with custom exception hierarchy**:
+  - Created `noiseframework/exceptions.py` with 14 custom exception classes
+  - `NoiseError` base class for all framework exceptions (enables catching all with single except clause)
+  - Handshake exceptions: `RoleNotSetError`, `RoleAlreadySetError`, `WrongTurnError`, `HandshakeCompleteError`, `MissingKeyError`
+  - Pattern validation exceptions: `UnsupportedPatternError`, `UnsupportedPrimitiveError`
+  - State management exceptions: `NoKeySetError`, `NonceOverflowError`, `InvalidKeySizeError`
+  - Transport exception: `AuthenticationError`
+  - Generic exceptions: `CryptoError`, `ValidationError`
+  - All exceptions include helpful context: current state, expected vs actual values, actionable suggestions
+  - Error messages explain what went wrong and how to fix it (e.g., "Call generate_static_keypair() first")
+  - Pattern-specific hints for common mistakes (IK/NK/XK/KK patterns requiring pre-message keys)
+  - Cryptographic errors provide security-relevant context (nonce overflow, authentication failure)
+- Replaced all generic `ValueError` and `RuntimeError` exceptions throughout codebase
+- Updated all modules with specific custom exceptions and helpful error messages:
+  - `handshake.py`: 15+ error types with state-aware messages
+  - `state.py`: Key initialization and nonce overflow errors
+  - `pattern.py`: Pattern validation with supported options listed
+  - `crypto/cipher.py`: Key size and authentication errors with cipher context
+  - `crypto/dh.py`: DH key size errors with curve-specific messages
+  - `crypto/hash.py`: HKDF and hash function errors
+  - `framing.py`: Message size validation errors
+  - `async_support.py`: Async framing validation errors
+- All custom exceptions exported from main `noiseframework` package
+- `FramingError` now inherits from `NoiseError` for consistency
+- `examples/error_handling_example.py` with 9 comprehensive error handling examples (~380 lines)
+- `tests/test_exceptions.py` with 15 dedicated exception tests validating hierarchy, catching patterns, and exports
+- Async/await support for modern Python asyncio applications:
+  - `AsyncNoiseHandshake` class wrapping `NoiseHandshake` with async methods
+  - `AsyncNoiseTransport` class wrapping `NoiseTransport` for async encrypted communication
+  - `AsyncFramedReader` for reading framed messages from `asyncio.StreamReader`
+  - `AsyncFramedWriter` for writing framed messages to `asyncio.StreamWriter`
+  - Async convenience functions: `async_read_framed_message()` and `async_write_framed_message()`
+  - All async operations use `asyncio.run_in_executor()` to avoid blocking event loop
+  - Compatible with asyncio streams (`StreamReader`, `StreamWriter`)
+  - Same security guarantees as synchronous version
+- `noiseframework/async_support.py` module (~450 lines) with complete async implementation
+- `examples/async_tcp_example.py` demonstrating async TCP server/client with Noise XX handshake
+- `tests/test_async.py` with 21 comprehensive async tests (100% pass rate)
+- Exported 6 async utilities from main package: `AsyncNoiseHandshake`, `AsyncNoiseTransport`, `AsyncFramedReader`, `AsyncFramedWriter`, `async_read_framed_message`, `async_write_framed_message`
+- Complete async API documentation in `docs/API.md` with usage examples
+- Async usage section in `README.md` with TCP server/client examples
+- Comprehensive logging support throughout the framework:
+  - Added optional `logger` parameter to `NoiseHandshake`, `NoiseTransport`, `CipherState`, and `SymmetricState` classes
+  - Default logger uses module + class name pattern (e.g., `noiseframework.noise.handshake.NoiseHandshake`)
+  - DEBUG-level logging for detailed operations (message sizes, tokens, nonces, key material)
+  - INFO-level logging for major events (role setting, handshake completion, message exchange)
+  - ERROR-level logging for validation failures and error conditions
+  - WARNING-level logging for approaching nonce limits in transport mode
+- `examples/logging_example.py` demonstrating logging configuration and usage
+- `tests/test_logging.py` with 21 comprehensive logging tests (100% pass rate)
+- Message framing utilities for stream-based transports:
+  - `FramedReader` class for reading length-prefixed messages with automatic partial read handling
+  - `FramedWriter` class for writing length-prefixed messages
+  - `FramingError` exception for framing-related errors (oversized messages, truncated frames)
+  - Helper functions `read_framed_message()` and `write_framed_message()` for single-message operations
+  - 4-byte big-endian length prefix format (supports messages up to 2^32-1 bytes)
+  - Default 16 MB maximum message size (configurable)
+  - Message counters (`messages_sent`, `messages_received`) for debugging
+  - Optional logging support in framing classes
+- `examples/framed_tcp_example.py` demonstrating TCP communication with Noise + framing
+- `tests/test_framing.py` with 30 comprehensive framing tests (100% pass rate)
+- Exported framing utilities from main package: `FramedReader`, `FramedWriter`, `FramingError`, `read_framed_message`, `write_framed_message`
+
 ## [1.2.1] - 2025-11-18
 
 ### Added

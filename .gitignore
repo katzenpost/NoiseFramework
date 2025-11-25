@@ -150,4 +150,6 @@ test_keys/
 *.enc
 *.dec
 
+# Ignore specific files for admin development
 docs/WEBSITE.md
+docs/TODO.md.backup

@@ -4,9 +4,11 @@ Symmetric state and cipher state for Noise Protocol.
 Implements the SymmetricState and CipherState objects from the Noise spec.
 """
 
+import logging
 from typing import Optional, Tuple
 from noiseframework.crypto.cipher import CipherFunction
 from noiseframework.crypto.hash import HashFunction
+from noiseframework.exceptions import NoKeySetError, NonceOverflowError, InvalidKeySizeError
 
 
 class CipherState:
@@ -16,16 +18,21 @@ class CipherState:
     Manages encryption/decryption with a key and nonce counter.
     """
 
-    def __init__(self, cipher: CipherFunction) -> None:
+    def __init__(
+        self, cipher: CipherFunction, logger: Optional[logging.Logger] = None
+    ) -> None:
         """
         Initialize CipherState.
 
         Args:
             cipher: AEAD cipher function to use
+            logger: Optional logger instance for cipher operations
         """
         self.cipher = cipher
         self.key: Optional[bytes] = None
         self.nonce: int = 0
+        self.logger = logger or logging.getLogger(f"{__name__}.CipherState")
+        self.logger.debug("CipherState initialized")
 
     def initialize_key(self, key: bytes) -> None:
         """
@@ -33,11 +40,18 @@ class CipherState:
 
         Args:
             key: 32-byte encryption key
+            
+        Raises:
+            InvalidKeySizeError: If key size is not 32 bytes
         """
         if len(key) != 32:
-            raise ValueError(f"Key must be 32 bytes, got {len(key)}")
+            raise InvalidKeySizeError(
+                f"Cipher key must be exactly 32 bytes for AEAD, got {len(key)} bytes. "
+                f"Check your key derivation or key generation process."
+            )
         self.key = key
         self.nonce = 0
+        self.logger.debug("Cipher key initialized (nonce reset to 0)")
 
     def has_key(self) -> bool:
         """Check if a key is set."""
@@ -58,10 +72,16 @@ class CipherState:
             ValueError: If no key is set or nonce overflow
         """
         if self.key is None:
-            raise ValueError("Cannot encrypt: no key set")
+            raise NoKeySetError(
+                "Cannot encrypt: cipher key not initialized. "
+                "Ensure handshake has progressed to a point where keys are established."
+            )
 
         if self.nonce >= 2**64:
-            raise ValueError("Nonce overflow: cannot encrypt more messages")
+            raise NonceOverflowError(
+                f"Nonce overflow at {self.nonce}: cannot encrypt more messages. "
+                f"This is a critical security limit. Create a new handshake/session."
+            )
 
         ciphertext = self.cipher.encrypt(self.key, self.nonce, ad, plaintext)
         self.nonce += 1
@@ -82,10 +102,16 @@ class CipherState:
             ValueError: If no key is set, nonce overflow, or authentication fails
         """
         if self.key is None:
-            raise ValueError("Cannot decrypt: no key set")
+            raise NoKeySetError(
+                "Cannot decrypt: cipher key not initialized. "
+                "Ensure handshake has progressed to a point where keys are established."
+            )
 
         if self.nonce >= 2**64:
-            raise ValueError("Nonce overflow: cannot decrypt more messages")
+            raise NonceOverflowError(
+                f"Nonce overflow at {self.nonce}: cannot decrypt more messages. "
+                f"This is a critical security limit. Create a new handshake/session."
+            )
 
         plaintext = self.cipher.decrypt(self.key, self.nonce, ad, ciphertext)
         self.nonce += 1
@@ -107,18 +133,26 @@ class SymmetricState:
     Manages hashing and encryption during the handshake.
     """
 
-    def __init__(self, hash_func: HashFunction, cipher: CipherFunction) -> None:
+    def __init__(
+        self,
+        hash_func: HashFunction,
+        cipher: CipherFunction,
+        logger: Optional[logging.Logger] = None,
+    ) -> None:
         """
         Initialize SymmetricState.
 
         Args:
             hash_func: Hash function to use
             cipher: AEAD cipher function to use
+            logger: Optional logger instance for symmetric operations
         """
         self.hash_func = hash_func
-        self.cipher_state = CipherState(cipher)
+        self.logger = logger or logging.getLogger(f"{__name__}.SymmetricState")
+        self.cipher_state = CipherState(cipher, logger=self.logger)
         self.chaining_key: bytes = b""
         self.h: bytes = b""  # Handshake hash
+        self.logger.debug("SymmetricState initialized")
 
     def initialize_symmetric(self, protocol_name: bytes) -> None:
         """
@@ -144,6 +178,7 @@ class SymmetricState:
         Args:
             input_key_material: Key material to mix (e.g., DH output)
         """
+        self.logger.debug(f"Mixing key material ({len(input_key_material)} bytes)")
         ck, temp_key = self.hash_func.hkdf(self.chaining_key, input_key_material, 2)
         self.chaining_key = ck
         self.cipher_state.initialize_key(temp_key)

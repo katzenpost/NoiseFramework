@@ -6,6 +6,7 @@ Supports ChaCha20-Poly1305 and AES-256-GCM.
 
 from typing import Optional
 from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305, AESGCM
+from noiseframework.exceptions import CryptoError, InvalidKeySizeError, AuthenticationError, UnsupportedPrimitiveError
 
 
 class CipherFunction:
@@ -78,12 +79,19 @@ class ChaChaPoly(CipherFunction):
             Ciphertext with 16-byte authentication tag appended
 
         Raises:
-            ValueError: If key size is invalid or nonce is out of range
+            InvalidKeySizeError: If key size is not 32 bytes
+            CryptoError: If nonce is out of valid range
         """
         if len(key) != 32:
-            raise ValueError(f"Key must be 32 bytes, got {len(key)}")
+            raise InvalidKeySizeError(
+                f"ChaCha20-Poly1305 requires 32-byte key, got {len(key)} bytes. "
+                f"Check your key derivation process."
+            )
         if nonce < 0 or nonce >= 2**64:
-            raise ValueError(f"Nonce must be a 64-bit unsigned integer, got {nonce}")
+            raise CryptoError(
+                f"Nonce must be a 64-bit unsigned integer (0 to 2^64-1), got {nonce}. "
+                f"This indicates a serious protocol violation."
+            )
 
         # Noise uses 8-byte little-endian nonce followed by 4 zero bytes
         nonce_bytes = nonce.to_bytes(8, "little") + b"\x00\x00\x00\x00"
@@ -105,12 +113,20 @@ class ChaChaPoly(CipherFunction):
             Plaintext
 
         Raises:
-            ValueError: If key size is invalid, nonce is out of range, or authentication fails
+            InvalidKeySizeError: If key size is not 32 bytes
+            CryptoError: If nonce is out of valid range
+            AuthenticationError: If decryption or authentication fails
         """
         if len(key) != 32:
-            raise ValueError(f"Key must be 32 bytes, got {len(key)}")
+            raise InvalidKeySizeError(
+                f"ChaCha20-Poly1305 requires 32-byte key, got {len(key)} bytes. "
+                f"Check your key derivation process."
+            )
         if nonce < 0 or nonce >= 2**64:
-            raise ValueError(f"Nonce must be a 64-bit unsigned integer, got {nonce}")
+            raise CryptoError(
+                f"Nonce must be a 64-bit unsigned integer (0 to 2^64-1), got {nonce}. "
+                f"This indicates a serious protocol violation."
+            )
 
         # Noise uses 8-byte little-endian nonce followed by 4 zero bytes
         nonce_bytes = nonce.to_bytes(8, "little") + b"\x00\x00\x00\x00"
@@ -119,7 +135,10 @@ class ChaChaPoly(CipherFunction):
         try:
             return cipher.decrypt(nonce_bytes, ciphertext, ad)
         except Exception as e:
-            raise ValueError(f"Decryption failed: {e}")
+            raise AuthenticationError(
+                f"ChaCha20-Poly1305 decryption failed: authentication tag verification failed. "
+                f"This indicates message tampering, corruption, or wrong keys. Original error: {e}"
+            )
 
 
 class AESGCMCipher(CipherFunction):
@@ -143,12 +162,19 @@ class AESGCMCipher(CipherFunction):
             Ciphertext with 16-byte authentication tag appended
 
         Raises:
-            ValueError: If key size is invalid or nonce is out of range
+            InvalidKeySizeError: If key size is not 32 bytes
+            CryptoError: If nonce is out of valid range
         """
         if len(key) != 32:
-            raise ValueError(f"Key must be 32 bytes, got {len(key)}")
+            raise InvalidKeySizeError(
+                f"AES-256-GCM requires 32-byte key, got {len(key)} bytes. "
+                f"Check your key derivation process."
+            )
         if nonce < 0 or nonce >= 2**64:
-            raise ValueError(f"Nonce must be a 64-bit unsigned integer, got {nonce}")
+            raise CryptoError(
+                f"Nonce must be a 64-bit unsigned integer (0 to 2^64-1), got {nonce}. "
+                f"This indicates a serious protocol violation."
+            )
 
         # Noise uses 4 zero bytes followed by 8-byte big-endian nonce for AESGCM
         nonce_bytes = b"\x00\x00\x00\x00" + nonce.to_bytes(8, "big")
@@ -170,12 +196,20 @@ class AESGCMCipher(CipherFunction):
             Plaintext
 
         Raises:
-            ValueError: If key size is invalid, nonce is out of range, or authentication fails
+            InvalidKeySizeError: If key size is not 32 bytes
+            CryptoError: If nonce is out of valid range
+            AuthenticationError: If decryption or authentication fails
         """
         if len(key) != 32:
-            raise ValueError(f"Key must be 32 bytes, got {len(key)}")
+            raise InvalidKeySizeError(
+                f"AES-256-GCM requires 32-byte key, got {len(key)} bytes. "
+                f"Check your key derivation process."
+            )
         if nonce < 0 or nonce >= 2**64:
-            raise ValueError(f"Nonce must be a 64-bit unsigned integer, got {nonce}")
+            raise CryptoError(
+                f"Nonce must be a 64-bit unsigned integer (0 to 2^64-1), got {nonce}. "
+                f"This indicates a serious protocol violation."
+            )
 
         # Noise uses 4 zero bytes followed by 8-byte big-endian nonce for AESGCM
         nonce_bytes = b"\x00\x00\x00\x00" + nonce.to_bytes(8, "big")
@@ -184,7 +218,10 @@ class AESGCMCipher(CipherFunction):
         try:
             return cipher.decrypt(nonce_bytes, ciphertext, ad)
         except Exception as e:
-            raise ValueError(f"Decryption failed: {e}")
+            raise AuthenticationError(
+                f"AES-256-GCM decryption failed: authentication tag verification failed. "
+                f"This indicates message tampering, corruption, or wrong keys. Original error: {e}"
+            )
 
 
 def get_cipher_function(name: str) -> CipherFunction:
@@ -198,11 +235,14 @@ def get_cipher_function(name: str) -> CipherFunction:
         CipherFunction instance
 
     Raises:
-        ValueError: If cipher function name is not recognized
+        UnsupportedPrimitiveError: If cipher function name is not recognized
     """
     if name == "ChaChaPoly":
         return ChaChaPoly()
     elif name == "AESGCM":
         return AESGCMCipher()
     else:
-        raise ValueError(f"Unknown cipher function: {name}")
+        raise UnsupportedPrimitiveError(
+            f"Unknown cipher function: '{name}'. "
+            f"Supported ciphers: ChaChaPoly, AESGCM."
+        )

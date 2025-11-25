@@ -42,7 +42,7 @@ Relates to #
 **Test commands:**
 ```bash
 pytest tests/
-pytest --cov=py_noise tests/
+pytest --cov=noiseframework tests/
 ```
 
 ## Checklist

@@ -1,6 +1,13 @@
 """Tests for transport layer."""
 
 import pytest
+from noiseframework.exceptions import (
+    AuthenticationError, CryptoError, InvalidKeySizeError,
+    UnsupportedPrimitiveError, UnsupportedPatternError,
+    ValidationError, RoleNotSetError, RoleAlreadySetError,
+    WrongTurnError, HandshakeCompleteError, MissingKeyError,
+    NoKeySetError, NonceOverflowError
+)
 from noiseframework.noise.handshake import NoiseHandshake
 from noiseframework.transport.transport import NoiseTransport
 
@@ -97,7 +104,7 @@ class TestNoiseTransport:
         ciphertext = self.init_transport.send(plaintext, ad)
 
         # Try to decrypt with wrong AD
-        with pytest.raises(ValueError, match="Decryption failed"):
+        with pytest.raises(AuthenticationError):
             self.resp_transport.receive(ciphertext, b"wrong metadata")
 
     def test_tampered_ciphertext_fails(self) -> None:
@@ -109,7 +116,7 @@ class TestNoiseTransport:
         # Tamper with ciphertext
         tampered = bytes([ciphertext[0] ^ 1]) + ciphertext[1:]
 
-        with pytest.raises(ValueError, match="Decryption failed"):
+        with pytest.raises(AuthenticationError):
             self.resp_transport.receive(tampered)
 
     def test_nonce_increments(self) -> None:

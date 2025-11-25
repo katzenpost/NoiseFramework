@@ -7,6 +7,7 @@ Supports Curve25519 (X25519) and Curve448 (X448).
 from typing import Tuple
 from cryptography.hazmat.primitives.asymmetric import x25519, x448
 from cryptography.hazmat.primitives import serialization
+from noiseframework.exceptions import InvalidKeySizeError, UnsupportedPrimitiveError
 
 
 class DHFunction:
@@ -93,9 +94,15 @@ class Curve25519(DHFunction):
             ValueError: If key sizes are invalid
         """
         if len(private_key) != 32:
-            raise ValueError(f"Private key must be 32 bytes, got {len(private_key)}")
+            raise InvalidKeySizeError(
+                f"Curve25519 private key must be exactly 32 bytes, got {len(private_key)} bytes. "
+                f"Check your key generation or loading process."
+            )
         if len(public_key) != 32:
-            raise ValueError(f"Public key must be 32 bytes, got {len(public_key)}")
+            raise InvalidKeySizeError(
+                f"Curve25519 public key must be exactly 32 bytes, got {len(public_key)} bytes. "
+                f"Check that the remote party is using Curve25519."
+            )
 
         private = x25519.X25519PrivateKey.from_private_bytes(private_key)
         public = x25519.X25519PublicKey.from_public_bytes(public_key)
@@ -148,9 +155,15 @@ class Curve448(DHFunction):
             ValueError: If key sizes are invalid
         """
         if len(private_key) != 56:
-            raise ValueError(f"Private key must be 56 bytes, got {len(private_key)}")
+            raise InvalidKeySizeError(
+                f"Curve448 private key must be exactly 56 bytes, got {len(private_key)} bytes. "
+                f"Check your key generation or loading process."
+            )
         if len(public_key) != 56:
-            raise ValueError(f"Public key must be 56 bytes, got {len(public_key)}")
+            raise InvalidKeySizeError(
+                f"Curve448 public key must be exactly 56 bytes, got {len(public_key)} bytes. "
+                f"Check that the remote party is using Curve448."
+            )
 
         private = x448.X448PrivateKey.from_private_bytes(private_key)
         public = x448.X448PublicKey.from_public_bytes(public_key)
@@ -170,11 +183,14 @@ def get_dh_function(name: str) -> DHFunction:
         DHFunction instance
 
     Raises:
-        ValueError: If DH function name is not recognized
+        UnsupportedPrimitiveError: If DH function name is not recognized
     """
     if name == "25519":
         return Curve25519()
     elif name == "448":
         return Curve448()
     else:
-        raise ValueError(f"Unknown DH function: {name}")
+        raise UnsupportedPrimitiveError(
+            f"Unknown DH function: '{name}'. "
+            f"Supported DH functions: 25519 (Curve25519), 448 (Curve448)."
+        )

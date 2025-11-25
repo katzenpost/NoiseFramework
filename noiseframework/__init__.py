@@ -5,16 +5,84 @@ This package provides cryptographically sound, specification-compliant implement
 of Noise handshake patterns for building secure communication channels.
 """
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __author__ = "Julius Pleunes"
 __license__ = "MIT"
 
 # Public API exports
 from noiseframework.noise.handshake import NoiseHandshake
 from noiseframework.transport.transport import NoiseTransport
+from noiseframework.connection import NoiseConnection, AsyncNoiseConnection
+from noiseframework.framing import (
+    FramedReader,
+    FramedWriter,
+    FramingError,
+    read_framed_message,
+    write_framed_message,
+)
+from noiseframework.async_support import (
+    AsyncNoiseHandshake,
+    AsyncNoiseTransport,
+    AsyncFramedReader,
+    AsyncFramedWriter,
+    async_read_framed_message,
+    async_write_framed_message,
+)
+from noiseframework.exceptions import (
+    NoiseError,
+    HandshakeError,
+    RoleNotSetError,
+    RoleAlreadySetError,
+    WrongTurnError,
+    HandshakeCompleteError,
+    MissingKeyError,
+    PatternError,
+    UnsupportedPatternError,
+    UnsupportedPrimitiveError,
+    StateError,
+    NoKeySetError,
+    NonceOverflowError,
+    InvalidKeySizeError,
+    TransportError,
+    AuthenticationError,
+    CryptoError,
+    ValidationError,
+)
 
 __all__ = [
     "__version__",
     "NoiseHandshake",
     "NoiseTransport",
+    "NoiseConnection",
+    "AsyncNoiseConnection",
+    "FramedReader",
+    "FramedWriter",
+    "FramingError",
+    "read_framed_message",
+    "write_framed_message",
+    "AsyncNoiseHandshake",
+    "AsyncNoiseTransport",
+    "AsyncFramedReader",
+    "AsyncFramedWriter",
+    "async_read_framed_message",
+    "async_write_framed_message",
+    # Exceptions
+    "NoiseError",
+    "HandshakeError",
+    "RoleNotSetError",
+    "RoleAlreadySetError",
+    "WrongTurnError",
+    "HandshakeCompleteError",
+    "MissingKeyError",
+    "PatternError",
+    "UnsupportedPatternError",
+    "UnsupportedPrimitiveError",
+    "StateError",
+    "NoKeySetError",
+    "NonceOverflowError",
+    "InvalidKeySizeError",
+    "TransportError",
+    "AuthenticationError",
+    "CryptoError",
+    "ValidationError",
 ]

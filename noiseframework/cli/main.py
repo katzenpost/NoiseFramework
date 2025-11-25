@@ -13,6 +13,7 @@ from noiseframework import NoiseHandshake
 from noiseframework.transport.transport import NoiseTransport
 from noiseframework.noise.pattern import parse_pattern, validate_pattern_string
 from noiseframework.crypto.dh import get_dh_function
+from noiseframework.exceptions import UnsupportedPatternError, UnsupportedPrimitiveError
 
 
 def generate_keypair(args: argparse.Namespace) -> int:
@@ -52,7 +53,7 @@ def validate_pattern(args: argparse.Namespace) -> int:
         print(f"  Hash:       {pattern.hash_function}")
         
         return 0
-    except ValueError as e:
+    except (UnsupportedPatternError, UnsupportedPrimitiveError) as e:
         print(f"Invalid pattern: {e}", file=sys.stderr)
         return 1
 
@@ -148,7 +149,7 @@ def main() -> int:
     parser.add_argument(
         "--version",
         action="version",
-        version="noiseframework 1.2.0",
+        version="noiseframework 1.3.0",
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
