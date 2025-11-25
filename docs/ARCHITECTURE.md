@@ -313,7 +313,7 @@ Initiator                           Responder
                                            → Parse s
                                            → DH(re, s) → se
 
-10. handshake_finished = True       11. handshake_finished = True
+10. handshake_complete = True        11. handshake_complete = True
 11. to_transport()                   12. to_transport()
 ```
 
@@ -369,7 +369,7 @@ At Split:
 
 **State Transitions:**
 - Invalid transitions raise `ValueError`
-- State is tracked via `message_index` and `handshake_finished`
+- State is tracked via `message_index` and `handshake_complete`
 
 ### Error States
 
