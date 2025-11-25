@@ -141,8 +141,15 @@ def mix_hash(self, data: bytes) -> None:
 def test_handshake_xx_pattern():
     """Test XX pattern handshake between initiator and responder."""
     # Arrange
-    initiator = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256", True)
-    responder = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256", False)
+    initiator = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+    initiator.set_as_initiator()
+    initiator.generate_static_keypair()
+    initiator.initialize()
+    
+    responder = NoiseHandshake("Noise_XX_25519_ChaChaPoly_SHA256")
+    responder.set_as_responder()
+    responder.generate_static_keypair()
+    responder.initialize()
     
     # Act
     msg1 = initiator.write_message(b"")
@@ -150,8 +157,8 @@ def test_handshake_xx_pattern():
     # ... continue handshake
     
     # Assert
-    assert initiator.handshake_finished
-    assert responder.handshake_finished
+    assert initiator.handshake_complete
+    assert responder.handshake_complete
 ```
 
 ### Documentation Requirements

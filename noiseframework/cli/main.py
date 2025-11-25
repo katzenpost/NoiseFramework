@@ -149,7 +149,7 @@ def main() -> int:
     parser.add_argument(
         "--version",
         action="version",
-        version="noiseframework 1.2.0",
+        version="noiseframework 1.3.0",
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Available commands")

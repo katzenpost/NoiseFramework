@@ -1498,7 +1498,7 @@ noiseframework/
 
 ## 🧪 Testing
 
-NoiseFramework has comprehensive test coverage with **243 tests** achieving **100% pass rate**.
+NoiseFramework has comprehensive test coverage with **311 tests** achieving **100% pass rate**.
 
 ### Test Categories
 - **Core functionality** (156 tests): Handshake, transport, patterns, crypto primitives
@@ -1612,7 +1612,7 @@ pip install -e ".[dev]"
 Yes, but with caveats:
 - ✅ Cryptographically sound (uses battle-tested primitives)
 - ✅ Specification-compliant implementation
-- ✅ Well-tested (243 tests, 100% pass rate)
+- ✅ Well-tested (311 tests, 100% pass rate)
 - ✅ Comprehensive error handling with helpful messages
 - ✅ Production-ready logging and monitoring support
 - ⚠️ Consider security audit for high-stakes applications
@@ -1680,6 +1680,53 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - [Noise Explorer](https://noiseexplorer.com/) - Formal verification of Noise patterns
 - [Noise Wiki](https://github.com/noiseprotocol/noise_wiki/wiki)
 - [PyCA Cryptography Documentation](https://cryptography.io/)
+
+---
+
+## 🚀 Roadmap & Future Features
+
+NoiseFramework v1.3.0 is **feature-complete** with all planned production-readiness enhancements implemented. Future development is planned for v1.4.0 and beyond.
+
+### Completed in v1.3.0 ✅
+
+All 7 major features have been implemented:
+- ✅ Async/Await Support (21 tests)
+- ✅ Message Framing (30 tests)
+- ✅ Better Error Messages (15 tests)
+- ✅ High-Level Connection API (25 tests)
+- ✅ Logging Support (21 tests)
+- ✅ PSK Support (22 tests)
+- ✅ Fallback Pattern Support (21 tests)
+
+### Planned for v1.4.0 🔄
+
+The next version will focus on advanced Noise Protocol Framework features:
+
+1. **Rekey Support** - Prevent nonce exhaustion for long-lived connections
+   - Manual and automatic rekeying
+   - Essential for IoT, VPNs, and persistent servers
+   - Spec: Section 11.3
+
+2. **Deferred Patterns** - Support NX, KX, IX patterns
+   - Responder identity revealed later in handshake
+   - Server-side optimization opportunities
+   - Spec: Section 10.4
+
+3. **Channel Binding** - Link Noise session to application context
+   - Prevents session confusion attacks
+   - Required for some compliance scenarios
+   - Spec: Section 11.2
+
+### Future Considerations (v1.5.0+) 💡
+
+- Out-of-Order Transport (UDP support)
+- Post-Quantum Cryptography (Kyber, hybrid schemes)
+- Hardware Security Module (HSM) support
+- Additional cipher suites
+- Performance optimizations
+- Protocol plugins/extensions
+
+**📋 See [docs/TODO.md](docs/TODO.md) for detailed feature descriptions, planned APIs, and implementation roadmap.**
 
 ---
 
