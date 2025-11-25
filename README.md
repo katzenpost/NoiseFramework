@@ -1498,7 +1498,7 @@ noiseframework/
 
 ## 🧪 Testing
 
-NoiseFramework has comprehensive test coverage with **243 tests** achieving **100% pass rate**.
+NoiseFramework has comprehensive test coverage with **311 tests** achieving **100% pass rate**.
 
 ### Test Categories
 - **Core functionality** (156 tests): Handshake, transport, patterns, crypto primitives
@@ -1612,7 +1612,7 @@ pip install -e ".[dev]"
 Yes, but with caveats:
 - ✅ Cryptographically sound (uses battle-tested primitives)
 - ✅ Specification-compliant implementation
-- ✅ Well-tested (243 tests, 100% pass rate)
+- ✅ Well-tested (311 tests, 100% pass rate)
 - ✅ Comprehensive error handling with helpful messages
 - ✅ Production-ready logging and monitoring support
 - ⚠️ Consider security audit for high-stakes applications

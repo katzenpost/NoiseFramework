@@ -759,7 +759,7 @@ except PatternError as e:
 8. Production error handling pattern (comprehensive try/except)
 9. Catching all NoiseFramework errors (using base class)
 
-**Test Coverage**: 243 tests passing (100% pass rate)
+**Test Coverage**: 311 tests passing (100% pass rate)
 - All 10 test files updated to expect custom exceptions
 - Tests verify correct exception types are raised
 - Tests verify error messages are helpful

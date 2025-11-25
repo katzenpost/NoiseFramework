@@ -77,7 +77,7 @@ addopts = [
 ]
 
 [tool.coverage.run]
-source = ["py_noise"]
+source = ["noiseframework"]
 omit = ["*/tests/*", "*/test_*.py"]
 
 [tool.coverage.report]
