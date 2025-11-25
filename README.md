@@ -1683,6 +1683,53 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ---
 
+## 🚀 Roadmap & Future Features
+
+NoiseFramework v1.3.0 is **feature-complete** with all planned production-readiness enhancements implemented. Future development is planned for v1.4.0 and beyond.
+
+### Completed in v1.3.0 ✅
+
+All 7 major features have been implemented:
+- ✅ Async/Await Support (21 tests)
+- ✅ Message Framing (30 tests)
+- ✅ Better Error Messages (15 tests)
+- ✅ High-Level Connection API (25 tests)
+- ✅ Logging Support (21 tests)
+- ✅ PSK Support (22 tests)
+- ✅ Fallback Pattern Support (21 tests)
+
+### Planned for v1.4.0 🔄
+
+The next version will focus on advanced Noise Protocol Framework features:
+
+1. **Rekey Support** - Prevent nonce exhaustion for long-lived connections
+   - Manual and automatic rekeying
+   - Essential for IoT, VPNs, and persistent servers
+   - Spec: Section 11.3
+
+2. **Deferred Patterns** - Support NX, KX, IX patterns
+   - Responder identity revealed later in handshake
+   - Server-side optimization opportunities
+   - Spec: Section 10.4
+
+3. **Channel Binding** - Link Noise session to application context
+   - Prevents session confusion attacks
+   - Required for some compliance scenarios
+   - Spec: Section 11.2
+
+### Future Considerations (v1.5.0+) 💡
+
+- Out-of-Order Transport (UDP support)
+- Post-Quantum Cryptography (Kyber, hybrid schemes)
+- Hardware Security Module (HSM) support
+- Additional cipher suites
+- Performance optimizations
+- Protocol plugins/extensions
+
+**📋 See [docs/TODO.md](docs/TODO.md) for detailed feature descriptions, planned APIs, and implementation roadmap.**
+
+---
+
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/juliuspleunes4/noiseframework/issues)
