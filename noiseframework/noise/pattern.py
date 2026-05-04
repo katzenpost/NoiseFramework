@@ -25,10 +25,14 @@ class NoisePattern:
     fallback_modifier: Optional[str] = None  # Fallback modifier (e.g., "fallback")
 
 
-# Supported handshake patterns (fundamental and interactive)
+# Supported handshake patterns (fundamental and interactive).
+# A trailing ``1`` on a participant letter denotes a deferred variant
+# in which the static-key DH operation associated with that letter is
+# moved out of the first message; see Noise spec section 7.5.
 SUPPORTED_PATTERNS = {
     "NN",
     "NK",
+    "NK1",
     "NX",
     "KN",
     "KK",
@@ -71,9 +75,11 @@ def parse_pattern(pattern_string: str) -> NoisePattern:
         ValueError: If pattern string is invalid or contains unsupported primitives
     """
     # Pattern format: Noise_PATTERN[pskN][fallback]_DH_CIPHER_HASH
-    # where [pskN] is optional and N is 0-4, and [fallback] is optional
-    # Examples: Noise_XX_25519_ChaChaPoly_SHA256, Noise_XXfallback_25519_ChaChaPoly_SHA256, Noise_XXpsk3_25519_ChaChaPoly_SHA256
-    pattern_regex = r"^Noise_([A-Z]{2}(?:psk[0-4])?(?:fallback)?)_(\w+)_(\w+)_(\w+)$"
+    # where [pskN] is optional and N is 0-4, and [fallback] is optional.
+    # Each of the two participant letters may carry a trailing ``1`` to
+    # denote a deferred variant (e.g. NK1, K1X1).
+    # Examples: Noise_XX_25519_ChaChaPoly_SHA256, Noise_NK1_25519_ChaChaPoly_BLAKE2s
+    pattern_regex = r"^Noise_([A-Z]1?[A-Z]1?(?:psk[0-4])?(?:fallback)?)_(\w+)_(\w+)_(\w+)$"
     match = re.match(pattern_regex, pattern_string)
 
     if not match:
@@ -96,9 +102,13 @@ def parse_pattern(pattern_string: str) -> NoisePattern:
     
     # Check for PSK modifier
     if "psk" in handshake_full:
-        # Extract base pattern and PSK modifier (e.g., "XXpsk3" -> "XX", "psk3")
-        handshake = handshake_full[:2]  # First two characters (XX, IK, NN, etc.)
-        psk_modifier = handshake_full[2:]  # Remaining part (psk0, psk2, etc.)
+        # Extract base pattern and PSK modifier (e.g. "XXpsk3" -> "XX",
+        # "psk3"; "NK1psk3" -> "NK1", "psk3"). Splitting at the "psk"
+        # substring rather than a fixed index accommodates deferred
+        # variants whose name is longer than two characters.
+        psk_index = handshake_full.index("psk")
+        handshake = handshake_full[:psk_index]
+        psk_modifier = handshake_full[psk_index:]
     else:
         handshake = handshake_full
 
@@ -189,6 +199,11 @@ def get_pattern_tokens(handshake_pattern: str, psk_modifier: Optional[str] = Non
     patterns = {
         "NN": ([], [], ["e", "e, ee"]),
         "NK": ([], ["s"], ["e, es", "e, ee"]),
+        # NK1 is the deferred variant of NK: the responder's static
+        # ``es`` is moved out of the first message and into the second,
+        # so the initiator's first message contains only ``e``. This
+        # avoids the 0-RTT replay caveat that NK carries.
+        "NK1": ([], ["s"], ["e", "e, ee, es"]),
         "NX": ([], [], ["e", "e, ee, s, es"]),
         "KN": (["s"], [], ["e", "e, ee, se"]),
         "KK": (["s"], ["s"], ["e, es, ss", "e, ee, se"]),

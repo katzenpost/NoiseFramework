@@ -35,6 +35,7 @@ class TestParsePattern:
             ("Noise_NN_25519_AESGCM_SHA512", "NN", "25519", "AESGCM", "SHA512"),
             ("Noise_IK_448_ChaChaPoly_BLAKE2s", "IK", "448", "ChaChaPoly", "BLAKE2s"),
             ("Noise_KK_25519_AESGCM_BLAKE2b", "KK", "25519", "AESGCM", "BLAKE2b"),
+            ("Noise_NK1_25519_ChaChaPoly_BLAKE2s", "NK1", "25519", "ChaChaPoly", "BLAKE2s"),
         ]
 
         for pattern_str, expected_hp, expected_dh, expected_cipher, expected_hash in test_cases:
@@ -117,6 +118,18 @@ class TestGetPatternTokens:
         assert resp_pre == ["s"]
         assert messages == ["e, es", "e, ee"]
 
+    def test_nk1_pattern(self) -> None:
+        """Test NK1 deferred pattern tokens.
+
+        NK1 moves the responder's static-key DH (``es``) out of the
+        first message and into the second. The first message therefore
+        contains only ``e``.
+        """
+        init_pre, resp_pre, messages = get_pattern_tokens("NK1")
+        assert init_pre == []
+        assert resp_pre == ["s"]
+        assert messages == ["e", "e, ee, es"]
+
     def test_xk_pattern(self) -> None:
         """Test XK pattern tokens."""
         init_pre, resp_pre, messages = get_pattern_tokens("XK")
@@ -126,7 +139,7 @@ class TestGetPatternTokens:
 
     def test_all_supported_patterns(self) -> None:
         """Test that all supported patterns have token sequences."""
-        patterns = ["NN", "NK", "NX", "KN", "KK", "KX", "XN", "XK", "XX", "IN", "IK", "IX"]
+        patterns = ["NN", "NK", "NK1", "NX", "KN", "KK", "KX", "XN", "XK", "XX", "IN", "IK", "IX"]
 
         for pattern in patterns:
             init_pre, resp_pre, messages = get_pattern_tokens(pattern)
