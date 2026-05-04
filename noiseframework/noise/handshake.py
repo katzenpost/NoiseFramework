@@ -130,11 +130,11 @@ class NoiseHandshake:
         Raises:
             ValidationError: If key sizes are incorrect
         """
-        if len(private_key) != self.dh.dhlen:
-            self.logger.error(f"Invalid private key size: expected {self.dh.dhlen}, got {len(private_key)}")
+        if len(private_key) != self.dh.privkey_size:
+            self.logger.error(f"Invalid private key size: expected {self.dh.privkey_size}, got {len(private_key)}")
             raise ValidationError(
                 f"Invalid private key size for {self.pattern.dh_function}: "
-                f"expected {self.dh.dhlen} bytes, got {len(private_key)} bytes. "
+                f"expected {self.dh.privkey_size} bytes, got {len(private_key)} bytes. "
                 f"Check that you're using the correct DH function in your pattern."
             )
         if len(public_key) != self.dh.dhlen:

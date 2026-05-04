@@ -38,6 +38,7 @@ classifiers = [
 
 dependencies = [
     "cryptography>=41.0.0",
+    "hpqc @ git+https://github.com/katzenpost/hpqc.git@add_python_bacap#subdirectory=py",
 ]
 
 [project.optional-dependencies]

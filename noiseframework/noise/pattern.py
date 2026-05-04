@@ -46,7 +46,7 @@ SUPPORTED_PATTERNS = {
 }
 
 # Supported DH functions
-SUPPORTED_DH = {"25519", "448"}
+SUPPORTED_DH = {"25519", "448", "Hybrid25519CTIDH1024"}
 
 # Supported cipher functions
 SUPPORTED_CIPHERS = {"ChaChaPoly", "AESGCM"}
@@ -147,7 +147,8 @@ def parse_pattern(pattern_string: str) -> NoisePattern:
         raise UnsupportedPrimitiveError(
             f"Unsupported DH function: '{dh}' in pattern '{pattern_string}'. "
             f"Supported DH functions: {supported}. "
-            f"Currently supporting Curve25519 (25519) and Curve448 (448)."
+            f"Currently supporting Curve25519 (25519), Curve448 (448), "
+            f"and Hybrid25519CTIDH1024 (X25519 + CTIDH1024)."
         )
 
     # Validate cipher function
