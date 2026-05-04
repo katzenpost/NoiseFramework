@@ -349,6 +349,67 @@ class TestNoiseHandshakeNK1:
         assert init.read_message(msg2) == b"hello from responder"
 
 
+class TestNoiseHandshakeNK1Hybrid:
+    """Test the target Pigeonhole-over-Reticulum protocol.
+
+    Exercises ``Noise_NK1_Hybrid25519CTIDH1024_ChaChaPoly_BLAKE2s``:
+    NK1 deferred handshake over the X25519 + CTIDH1024 hybrid NIKE,
+    ChaCha20-Poly1305 AEAD, BLAKE2s hash.
+    """
+
+    PROTOCOL = "Noise_NK1_Hybrid25519CTIDH1024_ChaChaPoly_BLAKE2s"
+
+    def test_handshake_complete(self) -> None:
+        """Run the full target handshake to completion."""
+        resp = NoiseHandshake(self.PROTOCOL)
+        resp.set_as_responder()
+        resp.generate_static_keypair()
+
+        init = NoiseHandshake(self.PROTOCOL)
+        init.set_as_initiator()
+        init.set_remote_static_public_key(resp.static_public)  # type: ignore
+        init.initialize()
+        resp.initialize()
+
+        # Message 1: -> e   (160 B raw hybrid ephemeral pubkey)
+        msg1 = init.write_message()
+        assert len(msg1) == 160
+        resp.read_message(msg1)
+
+        # Message 2: <- e, ee, es
+        msg2 = resp.write_message()
+        init.read_message(msg2)
+
+        assert init.handshake_complete
+        assert resp.handshake_complete
+
+    def test_transport_round_trip(self) -> None:
+        """Confirm transport ciphers established by the handshake work."""
+        resp = NoiseHandshake(self.PROTOCOL)
+        resp.set_as_responder()
+        resp.generate_static_keypair()
+        init = NoiseHandshake(self.PROTOCOL)
+        init.set_as_initiator()
+        init.set_remote_static_public_key(resp.static_public)  # type: ignore
+        init.initialize()
+        resp.initialize()
+
+        # Drive the two-message NK1 handshake to completion.
+        resp.read_message(init.write_message(b""))
+        init.read_message(resp.write_message(b""))
+
+        init_send, init_recv = init.to_transport()
+        resp_send, resp_recv = resp.to_transport()
+
+        # Initiator -> responder
+        ct = init_send.encrypt_with_ad(b"", b"hello, sir")
+        assert resp_recv.decrypt_with_ad(b"", ct) == b"hello, sir"
+
+        # Responder -> initiator
+        ct2 = resp_send.encrypt_with_ad(b"", b"good evening")
+        assert init_recv.decrypt_with_ad(b"", ct2) == b"good evening"
+
+
 class TestNoiseHandshakeIK:
     """Test IK pattern (responder known, initiator identity hidden)."""
 

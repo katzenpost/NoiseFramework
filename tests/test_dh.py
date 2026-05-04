@@ -8,7 +8,12 @@ from noiseframework.exceptions import (
     WrongTurnError, HandshakeCompleteError, MissingKeyError,
     NoKeySetError, NonceOverflowError
 )
-from noiseframework.crypto.dh import Curve25519, Curve448, get_dh_function
+from noiseframework.crypto.dh import (
+    Curve25519,
+    Curve448,
+    HybridX25519CTIDH1024,
+    get_dh_function,
+)
 
 
 class TestCurve25519:
@@ -137,6 +142,66 @@ class TestCurve448:
             dh.dh(private, b"short")
 
 
+class TestHybridX25519CTIDH1024:
+    """Test the X25519 + CTIDH1024 hybrid NIKE."""
+
+    def test_init(self) -> None:
+        """Test hybrid initialization, including asymmetric key sizes."""
+        dh = HybridX25519CTIDH1024()
+        assert dh.name == "Hybrid25519CTIDH1024"
+        assert dh.dhlen == 160  # 32 X25519 || 128 CTIDH1024
+        assert dh.privkey_size == 162  # 32 X25519 || 130 CTIDH1024 internal
+
+    def test_generate_keypair(self) -> None:
+        """Test hybrid key-pair generation."""
+        dh = HybridX25519CTIDH1024()
+        private, public = dh.generate_keypair()
+
+        assert isinstance(private, bytes)
+        assert isinstance(public, bytes)
+        assert len(private) == 162
+        assert len(public) == 160
+
+    def test_keypair_uniqueness(self) -> None:
+        """Test that generated hybrid key pairs are unique."""
+        dh = HybridX25519CTIDH1024()
+        priv1, pub1 = dh.generate_keypair()
+        priv2, pub2 = dh.generate_keypair()
+
+        assert priv1 != priv2
+        assert pub1 != pub2
+
+    def test_dh_exchange(self) -> None:
+        """Test hybrid DH agreement: Alice and Bob derive the same secret."""
+        dh = HybridX25519CTIDH1024()
+
+        alice_private, alice_public = dh.generate_keypair()
+        bob_private, bob_public = dh.generate_keypair()
+
+        alice_shared = dh.dh(alice_private, bob_public)
+        bob_shared = dh.dh(bob_private, alice_public)
+
+        assert alice_shared == bob_shared
+        # Shared secret is X25519 (32 B) || CTIDH1024 (128 B).
+        assert len(alice_shared) == 160
+
+    def test_dh_invalid_private_key_size(self) -> None:
+        """Test that an undersized private key is rejected."""
+        dh = HybridX25519CTIDH1024()
+        _, public = dh.generate_keypair()
+
+        with pytest.raises(InvalidKeySizeError):
+            dh.dh(b"short", public)
+
+    def test_dh_invalid_public_key_size(self) -> None:
+        """Test that an undersized public key is rejected."""
+        dh = HybridX25519CTIDH1024()
+        private, _ = dh.generate_keypair()
+
+        with pytest.raises(InvalidKeySizeError):
+            dh.dh(private, b"short")
+
+
 class TestGetDHFunction:
     """Test DH function factory."""
 
@@ -151,6 +216,12 @@ class TestGetDHFunction:
         dh = get_dh_function("448")
         assert isinstance(dh, Curve448)
         assert dh.name == "448"
+
+    def test_get_hybrid_x25519_ctidh1024(self) -> None:
+        """Test getting the X25519 + CTIDH1024 hybrid."""
+        dh = get_dh_function("Hybrid25519CTIDH1024")
+        assert isinstance(dh, HybridX25519CTIDH1024)
+        assert dh.name == "Hybrid25519CTIDH1024"
 
     def test_unknown_dh_function(self) -> None:
         """Test unknown DH function raises error."""
