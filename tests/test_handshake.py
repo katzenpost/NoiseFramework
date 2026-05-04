@@ -262,6 +262,93 @@ class TestNoiseHandshakeNK:
         assert resp.handshake_complete
 
 
+class TestNoiseHandshakeNK1:
+    """Test NK1 deferred pattern.
+
+    NK1 is the deferred variant of NK: the responder's static-key DH
+    (``es``) is moved out of the initiator's first message and into
+    the responder's reply. This avoids the 0-RTT replay caveat of NK
+    at the cost of one round trip for the static authentication.
+    """
+
+    def test_nk1_handshake_complete(self) -> None:
+        """Run a full NK1 handshake to completion."""
+        resp = NoiseHandshake("Noise_NK1_25519_ChaChaPoly_SHA256")
+        resp.set_as_responder()
+        resp.generate_static_keypair()
+
+        init = NoiseHandshake("Noise_NK1_25519_ChaChaPoly_SHA256")
+        init.set_as_initiator()
+        init.set_remote_static_public_key(resp.static_public)  # type: ignore
+        init.initialize()
+        resp.initialize()
+
+        # Message 1: -> e   (deferred: no static-key DH yet)
+        msg1 = init.write_message()
+        resp.read_message(msg1)
+
+        # Message 2: <- e, ee, es
+        msg2 = resp.write_message()
+        init.read_message(msg2)
+
+        assert init.handshake_complete
+        assert resp.handshake_complete
+
+    def test_nk1_first_message_shorter_than_nk(self) -> None:
+        """Pin the deferred-message structure on the wire.
+
+        The initiator's first message in NK1 carries only the raw
+        ephemeral key (32 bytes for X25519). NK's first message also
+        carries an encrypted-and-tagged payload (16 bytes of AEAD tag
+        even for an empty payload), so NK's first message is longer.
+        """
+        # NK1 first message
+        resp1 = NoiseHandshake("Noise_NK1_25519_ChaChaPoly_SHA256")
+        resp1.set_as_responder()
+        resp1.generate_static_keypair()
+        init1 = NoiseHandshake("Noise_NK1_25519_ChaChaPoly_SHA256")
+        init1.set_as_initiator()
+        init1.set_remote_static_public_key(resp1.static_public)  # type: ignore
+        init1.initialize()
+        nk1_msg1 = init1.write_message()
+
+        # NK first message
+        resp = NoiseHandshake("Noise_NK_25519_ChaChaPoly_SHA256")
+        resp.set_as_responder()
+        resp.generate_static_keypair()
+        init = NoiseHandshake("Noise_NK_25519_ChaChaPoly_SHA256")
+        init.set_as_initiator()
+        init.set_remote_static_public_key(resp.static_public)  # type: ignore
+        init.initialize()
+        nk_msg1 = init.write_message()
+
+        assert len(nk1_msg1) == 32  # raw ephemeral, no encrypted payload yet
+        assert len(nk_msg1) == 32 + 16  # ephemeral plus AEAD tag for empty payload
+        assert len(nk1_msg1) < len(nk_msg1)
+
+    def test_nk1_payload_round_trip(self) -> None:
+        """Confirm payloads round-trip through both NK1 messages."""
+        resp = NoiseHandshake("Noise_NK1_25519_ChaChaPoly_SHA256")
+        resp.set_as_responder()
+        resp.generate_static_keypair()
+        init = NoiseHandshake("Noise_NK1_25519_ChaChaPoly_SHA256")
+        init.set_as_initiator()
+        init.set_remote_static_public_key(resp.static_public)  # type: ignore
+        init.initialize()
+        resp.initialize()
+
+        # First message has no key yet (the responder's static is
+        # known but the ``es`` happens in message 2), so the payload
+        # is sent in the clear. Pass empty for clarity.
+        msg1 = init.write_message(b"")
+        assert resp.read_message(msg1) == b""
+
+        # Second message rides under the just-derived transport-grade
+        # key, so payloads are encrypted.
+        msg2 = resp.write_message(b"hello from responder")
+        assert init.read_message(msg2) == b"hello from responder"
+
+
 class TestNoiseHandshakeIK:
     """Test IK pattern (responder known, initiator identity hidden)."""
 
