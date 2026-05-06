@@ -5,6 +5,13 @@ All notable changes to NoiseFramework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- NK1 deferred handshake pattern (Noise spec section 7.5). The responder's static-key DH (`es`) is moved out of the initiator's first message and into the responder's reply, eliminating the 0-RTT replay caveat of NK at the cost of a single round trip for static authentication.
+- Pattern parsing now accepts a trailing `1` on either participant letter, accommodating the wider deferred-pattern family. The PSK-modifier split is corrected to find the `psk` substring rather than slice at a fixed index, so deferred names with PSK modifiers (e.g. `NK1psk3`) parse correctly.
+- `tests/test_pattern.py` and `tests/test_handshake.py` gain coverage for NK1, including a wire-size pin demonstrating that NK1's first message is 32 B (raw ephemeral) where NK's first message is 48 B (ephemeral plus AEAD tag).
+
 ## [1.3.0] - 2025-11-25
 
 ### Added
